@@ -10,6 +10,8 @@ namespace Genaker\Opcache\Block\Adminhtml\Index;
 class Index extends \Magento\Backend\Block\Template
 {
 
+    protected $backendUrl;
+    
     /**
      * Constructor
      *
@@ -18,9 +20,10 @@ class Index extends \Magento\Backend\Block\Template
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
+        UrlInterface $backendUrl,
         array $data = []
     ) {
-        //$this->setData('admin_url', $this->getUrl('adminhtml/module/action'));
+        $this->setData('gui_url', $this->backendUrl->getUrl('adminhtml/opcache_gui/gui'));
         parent::__construct($context, $data);
     }
 }
