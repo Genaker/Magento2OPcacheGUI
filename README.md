@@ -1,6 +1,6 @@
 # Magento 2 OPcache GUI
 
-Magento 2 Opcache Control GUI using React Micro-services. 
+Magento 2 Opcache Control GUI using React Micro-services Frontend. 
 
 ![MAgento 2 Opcache GUI](https://github.com/Genaker/Magento2OPcacheGUI/raw/main/Magento-Opcache-Gui.jpg)
 
