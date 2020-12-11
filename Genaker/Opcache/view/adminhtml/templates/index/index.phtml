@@ -15,14 +15,4 @@
 echo "<h1> PHP Op-Cache GUI </h1>";
 //require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
 
-function getAdmin(){
-  $conf = include(BP . '/app/etc/env.php');
-  $adminURL = $conf['backend']['frontName']; 
-  return $adminURL;
-}
-
-$adminURL = getAdmin();
-
-echo  "<h1>" . $block->getGuiUrl() . "</h1>";
-
 echo "<iframe src='" . $block->getGuiUrl() . "' title='react' style='height: 100%; width: 100%;' frameborder='0'  scrolling='no' onload='resizeIframe(this)'>";
