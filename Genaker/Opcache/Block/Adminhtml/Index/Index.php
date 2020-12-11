@@ -26,8 +26,12 @@ class Index extends \Magento\Backend\Block\Template
         array $data = []
     ) {
         $this->backendUrl = $backendUrl;
-        $this->setData('gui_url', $this->backendUrl->getUrl('opcache_gui/index/gui'));
+        //$this->setData('gui_url', $this->backendUrl->getUrl('opcache_gui/index/gui'));
         parent::__construct($context, $data);
+    }
+    
+    public function getGuiUrl(){
+        return $this->backendUrl->getUrl('opcache_gui/index/gui');
     }
 }
 
