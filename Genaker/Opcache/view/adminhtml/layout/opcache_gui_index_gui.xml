@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="admin-empty" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd" >
+<body>
+
+<referenceContainer name="head" remove="true"/>
+<referenceContainer name="header" remove="true"/>
+<referenceContainer name="menu" remove="true"/>
+<referenceContainer name="notifications" remove="true"/>
+<referenceContainer name="footer" remove="true"/>
+<referenceContainer name="content" remove="true"/>
+ <!--  <referenceContainer name="content">
+      <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" name="index.gui" template="Genaker_Opcache::index/gui.phtml"/>
+    </referenceContainer>
+-->
+     <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" name="index.gui" template="Genaker_Opcache::index/gui.phtml"/>
+</body>
+</page>

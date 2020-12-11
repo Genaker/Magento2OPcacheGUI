@@ -1,0 +1,26 @@
+<script>
+  function resizeIframe(obj) {
+    obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+  }
+</script>
+
+<!-- Precache React -->
+<!--<script src="//unpkg.com/react@16/umd/react.production.min.js" crossorigin></script>
+<script src="//unpkg.com/react-dom@16/umd/react-dom.production.min.js" crossorigin></script>-->
+<!--for development production.min. = development -->
+<!--
+<script src="//unpkg.com/axios/dist/axios.min.js" crossorigin></script>
+-->
+<?php
+echo "<h1> PHP Op-Cache GUI </h1>";
+//require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
+
+function getAdmin(){
+  $conf = include(BP . '/app/etc/env.php');
+  $adminURL = $conf['backend']['frontName']; 
+  return $adminURL;
+}
+
+$adminURL = getAdmin();
+
+echo "<iframe src='/$adminURL/opcache_gui/index/gui' title='react' style='height: 100%; width: 100%;' frameborder='0'  scrolling='no' onload='resizeIframe(this)'>";

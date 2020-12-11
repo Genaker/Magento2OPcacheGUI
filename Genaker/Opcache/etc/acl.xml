@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+	<acl>
+		<resources>
+			<resource id="Magento_Backend::admin">
+				<resource id="Genaker_Opcache::opcache_gui" sortOrder="10" title="opcache gui">
+					<resource id="Genaker_Opcache::index_index" sortOrder="10" title="index index"/>
+					<resource id="Genaker_Opcache::index_gui" sortOrder="10" title="index gui"/>
+				</resource>
+			</resource>
+		</resources>
+	</acl>
+</config>
