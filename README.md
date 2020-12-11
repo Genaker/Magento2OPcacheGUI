@@ -1,4 +1,4 @@
-# Magento2OPcacheGUI
+# Magento 2 OPcache GUI
 
 Magento 2 Opcache Control GUI using React Micro-services. 
 
