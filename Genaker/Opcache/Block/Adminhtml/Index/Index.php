@@ -25,6 +25,7 @@ class Index extends \Magento\Backend\Block\Template
         UrlInterface $backendUrl,
         array $data = []
     ) {
+        $this->backendUrl = $backendUrl;
         $this->setData('gui_url', $this->backendUrl->getUrl('opcache_gui/index/gui'));
         parent::__construct($context, $data);
     }
