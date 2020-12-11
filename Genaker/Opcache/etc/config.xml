@@ -11,5 +11,10 @@
                 </admin>
             </mode>
         </csp>
+         <web>
+            <corsRequests>
+                <origin_url>*</origin_url>
+            </corsRequests>
+        </web>
     </default>
 </config>
