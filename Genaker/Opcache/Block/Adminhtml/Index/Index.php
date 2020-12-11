@@ -7,6 +7,8 @@ declare(strict_types=1);
 
 namespace Genaker\Opcache\Block\Adminhtml\Index;
 
+use Magento\Backend\Model\UrlInterface;
+
 class Index extends \Magento\Backend\Block\Template
 {
 
@@ -23,7 +25,7 @@ class Index extends \Magento\Backend\Block\Template
         UrlInterface $backendUrl,
         array $data = []
     ) {
-        $this->setData('gui_url', $this->backendUrl->getUrl('adminhtml/opcache_gui/gui'));
+        $this->setData('gui_url', $this->backendUrl->getUrl('opcache_gui/index/gui'));
         parent::__construct($context, $data);
     }
 }
