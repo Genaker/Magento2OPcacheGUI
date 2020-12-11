@@ -23,4 +23,6 @@ function getAdmin(){
 
 $adminURL = getAdmin();
 
+echo  "<h1>" . $block->getGuiUrl() . "</h1>";
+
 echo "<iframe src='" . $block->getGuiUrl() . "' title='react' style='height: 100%; width: 100%;' frameborder='0'  scrolling='no' onload='resizeIframe(this)'>";
