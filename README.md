@@ -4,6 +4,10 @@ Magento 2 Opcache Control GUI using React Micro-services Frontend.
 
 ![MAgento 2 Opcache GUI](https://github.com/Genaker/Magento2OPcacheGUI/raw/main/Magento-Opcache-Gui.jpg)
 
+# Where to find in the Admin Menu
+
+System -> React -> OpCahe GUI
+
 # Magento 2 Opcache best settings
 ```
 opcache.enable = 1
