@@ -8,7 +8,7 @@ Magento 2 Opcache Control GUI using React Micro-services Frontend.
 
 System -> React -> OpCahe GUI
 
-# Instalation 
+# Installation 
 
 Copy to App code, Setup, compile as always. 
 
