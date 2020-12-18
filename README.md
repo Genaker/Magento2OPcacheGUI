@@ -15,6 +15,10 @@ Copy to App code, Setup, compile as always.
 This Extension don't need static content generation it usses CDN version fo the React JS. So, you can install with flag *--keep-generated*
 
 # Magento 2 Opcache best settings
+
+The biggest Magento 2 performance issue is wrong (default) PHP OPcache settings. 
+
+Check your PHP settings with this module:
 ```
 opcache.enable = 1
 opcache.enable_cli = 0
