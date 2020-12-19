@@ -37,7 +37,7 @@ if(extension_loaded('Zend OPcache')){
     		echo "<div class='test-error'>Increase OpCache Memory - Not Enought Memory</div>";
 	}
 	if ($validate_timestamps === true){
-    		echo "<div class='test-error'>Disable Timestamp Validation for production server</div>";
+    		echo "<div class='test-error'>Disable Timestamp Validation on production server</div>";
 	}
 } else {
 	echo '<div  class="test-result">You do not have the Zend OPcache extension loaded. Opcache is not working </div>';
