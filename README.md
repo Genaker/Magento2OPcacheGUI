@@ -1,33 +1,52 @@
-# Magento 2 OPcache GUI
+# Mage2 Module Genaker Opcache
 
-Magento 2 Opcache Control GUI using React Micro-services Frontend. 
+    ``genaker/module-opcache``
 
-![MAgento 2 Opcache GUI](https://github.com/Genaker/Magento2OPcacheGUI/raw/main/Magento-Opcache-Gui.jpg)
+ - [Main Functionalities](#markdown-header-main-functionalities)
+ - [Installation](#markdown-header-installation)
+ - [Configuration](#markdown-header-configuration)
+ - [Specifications](#markdown-header-specifications)
+ - [Attributes](#markdown-header-attributes)
 
-# Where to find in the Admin Menu
 
-System -> React -> OpCahe GUI
+## Main Functionalities
+Op-cache monitoring 
 
-# Installation 
+## Installation
+\* = in production please use the `--keep-generated` option
 
-Copy to App code, Setup, compile as always. 
+### Type 1: Zip file
 
-This Extension don't need static content generation it usses CDN version fo the React JS. So, you can install with flag *--keep-generated*
+ - Unzip the zip file in `app/code/Genaker`
+ - Enable the module by running `php bin/magento module:enable Genaker_Opcache`
+ - Apply database updates by running `php bin/magento setup:upgrade`\*
+ - Flush the cache by running `php bin/magento cache:flush`
 
-or use composer: 
-```
-composer require genaker/module-opcache
-```
+### Type 2: Composer
 
-# Magento 2 Opcache best settings
+ - Make the module available in a composer repository for example:
+    - private repository `repo.magento.com`
+    - public repository `packagist.org`
+    - public github repository as vcs
+ - Add the composer repository to the configuration by running `composer config repositories.repo.magento.com composer https://repo.magento.com/`
+ - Install the module composer by running `composer require genaker/module-opcache`
+ - enable the module by running `php bin/magento module:enable Genaker_Opcache`
+ - apply database updates by running `php bin/magento setup:upgrade`\*
+ - Flush the cache by running `php bin/magento cache:flush`
 
-The biggest Magento 2 performance issue is wrong (default) PHP OPcache settings. 
 
-Check your PHP settings with this module:
-```
-opcache.enable = 1
-opcache.enable_cli = 0
-opcache.memory_consumption = 356
-opcache.max_accelerated_files = 100000
-opcache.validate_timestamps = 0
-```
+## Configuration
+
+
+
+
+## Specifications
+
+ - Controller
+	- adminhtml > opcache_gui/index/index
+
+
+## Attributes
+
+
+
