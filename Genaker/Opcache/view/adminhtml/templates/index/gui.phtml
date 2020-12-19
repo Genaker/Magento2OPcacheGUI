@@ -30,14 +30,17 @@ echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " s
 
 echo '<h2>PHP Opcahe test</h2>';
 
-$free_memory = opcache_get_status(false)['memory_usage']['free_memory'];
-$validate_timestamps = opcache_get_configuration()['directives']['opcache.validate_timestamps'];
-
-if ($free_memory < 1000000){
-    echo "<div class='test-error'>Increase OpCache Memory - Not Enought Memory</div>";
+if(extension_loaded('Zend OPcache')){
+	$free_memory = opcache_get_status(false)['memory_usage']['free_memory'];
+	$validate_timestamps = opcache_get_configuration()['directives']['opcache.validate_timestamps'];
+	if ($free_memory < 1000000){
+    		echo "<div class='test-error'>Increase OpCache Memory - Not Enought Memory</div>";
+	}
+	if ($validate_timestamps === true){
+    		echo "<div class='test-error'>Disable Timestamp Validation for production server</div>";
+	}
+} else {
+	echo '<div  class="test-result">You do not have the Zend OPcache extension loaded. Opcache is not working </div>';
 }
-if ($validate_timestamps === true){
-    echo "<div class='test-error'>Disable Timestamp Validation for production server</div>";
-}
-
+		
 require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
