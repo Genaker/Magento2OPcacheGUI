@@ -1,3 +1,17 @@
+<style>
+    .test-result {
+    padding-bottom: 5px;
+    font-size: 20px;
+    color: greenyellow;
+    background-color: black;
+	}
+    .test-error {
+    color: red;
+    font-size: 20px;
+    font-weight: 600;
+    }
+</style>
+
 <?php
 //echo "<h1> PHP Op-Cache GUI </h1>";
 echo '<h2>PHP Performance test </h2>';
@@ -10,9 +24,9 @@ for ($a = 0; $a < 10000000; $a++) { $b = $a*$a; }
 $end = microtime(TRUE);
 return $end - $start;
 }
-echo "<div class='test-result'> The Test code snippet took " . testPHP() . " seconds to complete. </div>";
-echo "<div class='test-result'> The Test code snippet took " . testPHP() . " seconds to complete. </div>";
-echo "<div class='test-result'> The Test code snippet took " . testPHP() . " seconds to complete. </div>";
+echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
+echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
+echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
 
 echo '<h2>PHP Opcahe test</h2>';
 
