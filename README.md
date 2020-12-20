@@ -6,7 +6,7 @@ Magento 2 Opcache Control GUI using React Micro-services Frontend.
 
 # Where to find in the Admin Menu
 
-System -> React -> OpCahe GUI
+System -> React -> OpCache GUI
 
 # Installation 
 
