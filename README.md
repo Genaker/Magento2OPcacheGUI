@@ -35,8 +35,8 @@ opcache.validate_timestamps = 0
 
 New feature has been added. Now you will have PHP perofmance test on GUI open. 
 
-Magento 2 is CPU intensive platform due to bad framework design. You shold use the fastes CPU to achive good performacne results. If Magento 2 takes a 2GHz processor core 3 seconds to process a request, then the same request would be returned in around 2 seconds by a 3GHz processor core. Test yor PHP performance. 
+Magento 2 is CPU intensive platform due to bad framework design. You shold use the fastes CPU to achive a good page rendering performance. If Magento 2 takes a 2GHz processor core 3 seconds to process a request, then the same request would be returned in around 2 seconds by a 3GHz processor core. Test yor PHP performance. 
 
 ![Magento 2 PHP performance](https://github.com/Genaker/Magento2OPcacheGUI/raw/main/PHP-performance.jpg)
 
-AWS C5.large has *0.032* PHP performance score (less is beter)
+AWS C5.large has *0.032* PHP performance score (less is beter).
