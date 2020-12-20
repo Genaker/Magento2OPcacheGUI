@@ -31,3 +31,8 @@ opcache.memory_consumption = 356
 opcache.max_accelerated_files = 100000
 opcache.validate_timestamps = 0
 ```
+# PHP performance measurement
+
+New feature has been added. Now you will have PHP perofmance test on GUI open. 
+
+Magento 2 is CPU intensive platform. You shold use the fastes CPU to achive good performacne results. If Magento 2 takes a 2GHz processor core 3 seconds to process a request, then the same request would be returned in around 2 seconds by a 3GHz processor core. Test yor PHP performance. 
