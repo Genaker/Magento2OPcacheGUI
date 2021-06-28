@@ -52,8 +52,8 @@ if (empty($ocEnabled)) {
     die('The Zend OPcache extension is installed but not active');
 }
 
-header('Cache-Control: no-cache, must-revalidate');
-header('Pragma: no-cache');
+@header('Cache-Control: no-cache, must-revalidate');
+@header('Pragma: no-cache');
 
 class Service
 {
