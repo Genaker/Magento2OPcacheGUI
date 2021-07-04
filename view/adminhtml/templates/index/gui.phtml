@@ -42,5 +42,10 @@ if(extension_loaded('Zend OPcache')){
 } else {
 	echo '<div  class="test-result">You do not have the Zend OPcache extension loaded. Opcache is not working </div>';
 }
+
+
+if(extension_loaded('xdebug')){
+	echo "<div class='test-error'>X-Debug is enabled. It has huge performance overhed. Disable XDebuug on Production.</div>";
+}
 		
 require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
