@@ -2,64 +2,140 @@
 
 namespace Amnuts\Opcache;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use Exception;
+
 class Service
 {
-    const VERSION = '3.0.1';
+    public const VERSION = '3.5.1';
 
+    protected $tz;
     protected $data;
     protected $options;
     protected $optimizationLevels;
+    protected $jitModes;
+    protected $jitModeMapping = [
+        'tracing' => 1254,
+        'on' => 1254,
+        'function' => 1205
+    ];
     protected $defaults = [
-        'allow_filelist'   => true,          // show/hide the files tab
-        'allow_invalidate' => true,          // give a link to invalidate files
-        'allow_reset'      => true,          // give option to reset the whole cache
-        'allow_realtime'   => true,          // give option to enable/disable real-time updates
-        'refresh_time'     => 5,             // how often the data will refresh, in seconds
-        'size_precision'   => 2,             // Digits after decimal point
-        'size_space'       => false,         // have '1MB' or '1 MB' when showing sizes
-        'charts'           => true,          // show gauge chart or just big numbers
-        'debounce_rate'    => 250,           // milliseconds after key press to send keyup event when filtering
-        'per_page'         => 200,           // How many results per page to show in the file list, false for no pagination
-        'cookie_name'      => 'opcachegui',  // name of cookie
-        'cookie_ttl'       => 365,           // days to store cookie
+        'allow_filelist'   => true,                // show/hide the files tab
+        'allow_invalidate' => true,                // give a link to invalidate files
+        'allow_reset'      => true,                // give option to reset the whole cache
+        'allow_realtime'   => true,                // give option to enable/disable real-time updates
+        'refresh_time'     => 5,                   // how often the data will refresh, in seconds
+        'size_precision'   => 2,                   // Digits after decimal point
+        'size_space'       => false,               // have '1MB' or '1 MB' when showing sizes
+        'charts'           => true,                // show gauge chart or just big numbers
+        'debounce_rate'    => 250,                 // milliseconds after key press to send keyup event when filtering
+        'per_page'         => 200,                 // How many results per page to show in the file list, false for no pagination
+        'cookie_name'      => 'opcachegui',        // name of cookie
+        'cookie_ttl'       => 365,                 // days to store cookie
+        'datetime_format'  => 'D, d M Y H:i:s O',  // Show datetime in this format
         'highlight'        => [
-            'memory' => true,                // show the memory chart/big number
-            'hits'   => true,                // show the hit rate chart/big number
-            'keys'   => true                 // show the keys used chart/big number
-        ]
+            'memory' => true,                      // show the memory chart/big number
+            'hits'   => true,                      // show the hit rate chart/big number
+            'keys'   => true,                      // show the keys used chart/big number
+            'jit'    => true                       // show the jit buffer chart/big number
+        ],
+        'language_pack'    => null                 // json structure of all text strings used, or null for default
     ];
 
     /**
      * Service constructor.
      * @param array $options
+     * @throws Exception
      */
     public function __construct(array $options = [])
     {
+        $this->options = array_merge($this->defaults, $options);
+        $this->tz = new DateTimeZone(date_default_timezone_get());
+        if (is_string($this->options['language_pack'])) {
+            $this->options['language_pack'] = json_decode($this->options['language_pack'], true);
+        }
+
         $this->optimizationLevels = [
-            1 << 0 => 'CSE, STRING construction',
-            1 << 1 => 'Constant conversion and jumps',
-            1 << 2 => '++, +=, series of jumps',
-            1 << 3 => 'INIT_FCALL_BY_NAME -> DO_FCALL',
-            1 << 4 => 'CFG based optimization',
-            1 << 5 => 'DFA based optimization',
-            1 << 6 => 'CALL GRAPH optimization',
-            1 << 7 => 'SCCP (constant propagation)',
-            1 << 8 => 'TMP VAR usage',
-            1 << 9 => 'NOP removal',
-            1 << 10 => 'Merge equal constants',
-            1 << 11 => 'Adjust used stack',
-            1 << 12 => 'Remove unused variables',
-            1 << 13 => 'DCE (dead code elimination)',
-            1 << 14 => '(unsafe) Collect constants',
-            1 << 15 => 'Inline functions'
+            1 << 0  => $this->txt('CSE, STRING construction'),
+            1 << 1  => $this->txt('Constant conversion and jumps'),
+            1 << 2  => $this->txt('++, +=, series of jumps'),
+            1 << 3  => $this->txt('INIT_FCALL_BY_NAME -> DO_FCALL'),
+            1 << 4  => $this->txt('CFG based optimization'),
+            1 << 5  => $this->txt('DFA based optimization'),
+            1 << 6  => $this->txt('CALL GRAPH optimization'),
+            1 << 7  => $this->txt('SCCP (constant propagation)'),
+            1 << 8  => $this->txt('TMP VAR usage'),
+            1 << 9  => $this->txt('NOP removal'),
+            1 << 10 => $this->txt('Merge equal constants'),
+            1 << 11 => $this->txt('Adjust used stack'),
+            1 << 12 => $this->txt('Remove unused variables'),
+            1 << 13 => $this->txt('DCE (dead code elimination)'),
+            1 << 14 => $this->txt('(unsafe) Collect constants'),
+            1 << 15 => $this->txt('Inline functions'),
+        ];
+        $this->jitModes = [
+            [
+                'flag' => $this->txt('CPU-specific optimization'),
+                'value' => [
+                    $this->txt('Disable CPU-specific optimization'),
+                    $this->txt('Enable use of AVX, if the CPU supports it')
+                ]
+            ],
+            [
+                'flag' => $this->txt('Register allocation'),
+                'value' => [
+                    $this->txt('Do not perform register allocation'),
+                    $this->txt('Perform block-local register allocation'),
+                    $this->txt('Perform global register allocation')
+                ]
+            ],
+            [
+                'flag' => $this->txt('Trigger'),
+                'value' => [
+                    $this->txt('Compile all functions on script load'),
+                    $this->txt('Compile functions on first execution'),
+                    $this->txt('Profile functions on first request and compile the hottest functions afterwards'),
+                    $this->txt('Profile on the fly and compile hot functions'),
+                    $this->txt('Currently unused'),
+                    $this->txt('Use tracing JIT. Profile on the fly and compile traces for hot code segments')
+                ]
+            ],
+            [
+                'flag' => $this->txt('Optimization level'),
+                'value' => [
+                    $this->txt('No JIT'),
+                    $this->txt('Minimal JIT (call standard VM handlers)'),
+                    $this->txt('Inline VM handlers'),
+                    $this->txt('Use type inference'),
+                    $this->txt('Use call graph'),
+                    $this->txt('Optimize whole script')
+                ]
+            ]
         ];
 
-        $this->options = array_merge($this->defaults, $options);
         $this->data = $this->compileState();
     }
 
     /**
+     * @return string
+     */
+    public function txt(): string
+    {
+        $args = func_get_args();
+        $text = array_shift($args);
+        if ((($lang = $this->getOption('language_pack')) !== null) && !empty($lang[$text])) {
+            $text = $lang[$text];
+        }
+        foreach ($args as $i => $arg) {
+            $text = str_replace('{' . $i . '}', $arg, $text);
+        }
+        return $text;
+    }
+
+    /**
      * @return $this
+     * @throws Exception
      */
     public function handle(): Service
     {
@@ -74,14 +150,12 @@ class Service
 
         if (isset($_GET['reset']) && $this->getOption('allow_reset')) {
             $response($this->resetCache());
-        } else if (isset($_GET['invalidate']) && $this->getOption('allow_invalidate')) {
+        } elseif (isset($_GET['invalidate']) && $this->getOption('allow_invalidate')) {
             $response($this->resetCache($_GET['invalidate']));
-        } else if (isset($_GET['invalidate_searched']) && $this->getOption('allow_invalidate')) {
+        } elseif (isset($_GET['invalidate_searched']) && $this->getOption('allow_invalidate')) {
             $response($this->resetSearched($_GET['invalidate_searched']));
-        } else if (isset($_GET['invalidate_searched']) && $this->getOption('allow_invalidate')) {
-            $response($this->resetSearched($_GET['invalidate_searched']));
-        } else if ($this->isJsonRequest() && $this->getOption('allow_realtime')) {
-            echo json_encode($this->getData((empty($_GET['section']) ? null : $_GET['section'])));
+        } elseif ($this->isJsonRequest() && $this->getOption('allow_realtime')) {
+            echo json_encode($this->getData($_GET['section'] ?? null));
             exit;
         }
 
@@ -97,10 +171,8 @@ class Service
         if ($name === null) {
             return $this->options;
         }
-        return (isset($this->options[$name])
-            ? $this->options[$name]
-            : null
-        );
+
+        return $this->options[$name] ?? null;
     }
 
     /**
@@ -134,13 +206,14 @@ class Service
     /**
      * @param string|null $file
      * @return bool
+     * @throws Exception
      */
     public function resetCache(?string $file = null): bool
     {
         $success = false;
         if ($file === null) {
             $success = opcache_reset();
-        } else if (function_exists('opcache_invalidate')) {
+        } elseif (function_exists('opcache_invalidate')) {
             $success = opcache_invalidate(urldecode($file), true);
         }
         if ($success) {
@@ -152,6 +225,7 @@ class Service
     /**
      * @param string $search
      * @return bool
+     * @throws Exception
      */
     public function resetSearched(string $search): bool
     {
@@ -197,6 +271,7 @@ class Service
 
     /**
      * @return array
+     * @throws Exception
      */
     protected function compileState(): array
     {
@@ -209,8 +284,8 @@ class Service
 
         $files = [];
         if (!empty($status['scripts']) && $this->getOption('allow_filelist')) {
-            uasort($status['scripts'], function ($a, $b) {
-                return $a['hits'] < $b['hits'];
+            uasort($status['scripts'], static function ($a, $b) {
+                return $a['hits'] <=> $b['hits'];
             });
             foreach ($status['scripts'] as &$file) {
                 $file['full_path'] = str_replace('\\', '/', $file['full_path']);
@@ -218,6 +293,15 @@ class Service
                     'hits' => number_format($file['hits']),
                     'memory_consumption' => $this->size($file['memory_consumption'])
                 ];
+                $file['last_used'] = (new DateTimeImmutable("@{$file['last_used_timestamp']}"))
+                    ->setTimezone($this->tz)
+                    ->format($this->getOption('datetime_format'));
+                $file['last_modified'] = "";
+                if (!empty($file['timestamp'])) {
+                    $file['last_modified'] = (new DateTimeImmutable("@{$file['timestamp']}"))
+                        ->setTimezone($this->tz)
+                        ->format($this->getOption('datetime_format'));
+                }
             }
             $files = array_values($status['scripts']);
         }
@@ -249,10 +333,14 @@ class Service
                         'num_cached_keys' => number_format($status['opcache_statistics']['num_cached_keys']),
                         'max_cached_keys' => number_format($status['opcache_statistics']['max_cached_keys']),
                         'interned' => null,
-                        'start_time' => date('Y-m-d H:i:s', $status['opcache_statistics']['start_time']),
-                        'last_restart_time' => ($status['opcache_statistics']['last_restart_time'] == 0
-                            ? 'never'
-                            : date('Y-m-d H:i:s', $status['opcache_statistics']['last_restart_time'])
+                        'start_time' => (new DateTimeImmutable("@{$status['opcache_statistics']['start_time']}"))
+                            ->setTimezone($this->tz)
+                            ->format($this->getOption('datetime_format')),
+                        'last_restart_time' => ($status['opcache_statistics']['last_restart_time'] === 0
+                            ? $this->txt('never')
+                            : (new DateTimeImmutable("@{$status['opcache_statistics']['last_restart_time']}"))
+                                ->setTimezone($this->tz)
+                                ->format($this->getOption('datetime_format'))
                         )
                     ]
                 ]
@@ -278,19 +366,45 @@ class Service
             ];
         }
 
+        if ($overview && !empty($status['jit'])) {
+            $overview['jit_buffer_used_percentage'] = ($status['jit']['buffer_size']
+                ? round(100 * (($status['jit']['buffer_size'] - $status['jit']['buffer_free']) / $status['jit']['buffer_size']))
+                : 0
+            );
+            $overview['readable'] = array_merge($overview['readable'], [
+                'jit_buffer_size' => $this->size($status['jit']['buffer_size']),
+                'jit_buffer_free' => $this->size($status['jit']['buffer_free'])
+            ]);
+        } else {
+            $this->options['highlight']['jit'] = false;
+        }
+
         $directives = [];
         ksort($config['directives']);
         foreach ($config['directives'] as $k => $v) {
-            if (in_array($k, ['opcache.max_file_size', 'opcache.memory_consumption']) && $v) {
+            if (in_array($k, ['opcache.max_file_size', 'opcache.memory_consumption', 'opcache.jit_buffer_size']) && $v) {
                 $v = $this->size($v) . " ({$v})";
-            } elseif ($k == 'opcache.optimization_level') {
+            } elseif ($k === 'opcache.optimization_level') {
                 $levels = [];
                 foreach ($this->optimizationLevels as $level => $info) {
                     if ($level & $v) {
-                        $levels[] = $info;
+                        $levels[] = "{$info} [{$level}]";
                     }
                 }
                 $v = $levels ?: 'none';
+            } elseif ($k === 'opcache.jit') {
+                if ($v === '1') {
+                    $v = 'on';
+                }
+                if (isset($this->jitModeMapping[$v]) || is_numeric($v)) {
+                    $levels = [];
+                    foreach (str_split((string)($this->jitModeMapping[$v] ?? $v)) as $type => $level) {
+                        $levels[] = "{$level}: {$this->jitModes[$type]['value'][$level]} ({$this->jitModes[$type]['flag']})";
+                    }
+                    $v = [$v, $levels];
+                } elseif (empty($v) || strtolower($v) === 'off') {
+                    $v = 'Off';
+                }
             }
             $directives[] = [
                 'k' => $k,
@@ -301,7 +415,7 @@ class Service
         $version = array_merge(
             $config['version'],
             [
-                'php' => phpversion(),
+                'php' => PHP_VERSION,
                 'server' => $_SERVER['SERVER_SOFTWARE'] ?: '',
                 'host' => (function_exists('gethostname')
                     ? gethostname()
