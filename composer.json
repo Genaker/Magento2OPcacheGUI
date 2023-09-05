@@ -1,18 +1,18 @@
 {
-    "name": "genaker/module-opcache",
-    "description": "PHP Op-cache monitoring ",
+    "name": "hgati/module-opcache",
+    "description": "PHP Op-cache monitoring (Jit buffer usage)",
     "type": "magento2-module",
     "license": "MIT",
     "authors": [
         {
-            "name": "Yehor Shytikov",
-            "email": "egorshitikov@gmail.com"
+            "name": "Dennis Lee",
+            "email": "cobays@gmail.com"
         }
     ],
     "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
-            "Genaker\\Opcache\\": ""
+            "Hgati\\Opcache\\": ""
         },
         "files": [
             "registration.php"

@@ -3,9 +3,9 @@
 	<acl>
 		<resources>
 			<resource id="Magento_Backend::admin">
-				<resource id="Genaker_Opcache::opcache_gui" sortOrder="10" title="opcache gui">
-					<resource id="Genaker_Opcache::index_index" sortOrder="10" title="index index"/>
-					<resource id="Genaker_Opcache::index_gui" sortOrder="10" title="index gui"/>
+				<resource id="Hgati_Opcache::opcache_gui" sortOrder="10" title="opcache gui">
+					<resource id="Hgati_Opcache::index_index" sortOrder="10" title="index index"/>
+					<resource id="Hgati_Opcache::index_gui" sortOrder="10" title="index gui"/>
 				</resource>
 			</resource>
 		</resources>

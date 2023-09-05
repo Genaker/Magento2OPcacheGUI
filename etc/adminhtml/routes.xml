@@ -2,7 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
 	<router id="admin">
 		<route frontName="opcache_gui" id="opcache_gui">
-			<module before="Magento_Backend" name="Genaker_Opcache"/>
+			<module before="Magento_Backend" name="Hgati_Opcache"/>
 		</route>
 	</router>
 </config>

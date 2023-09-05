@@ -5,7 +5,7 @@
  */
 declare(strict_types=1);
 
-namespace Genaker\Opcache\Controller\Adminhtml\Index;
+namespace Hgati\Opcache\Controller\Adminhtml\Index;
 
 class Gui extends \Magento\Backend\App\Action
 {
@@ -37,7 +37,7 @@ class Gui extends \Magento\Backend\App\Action
    
         //$this->addData(array('cache_lifetime' => null));
         /*return $this->resultPageFactory->create(false, [
-            'template' => 'Genaker_Opcache::index/gui.phtml'
+            'template' => 'Hgati_Opcache::index/gui.phtml'
         ]);*/
 	    require __DIR__ . '/../../../view/adminhtml/templates/index/gui.phtml';
         die();

@@ -2,7 +2,7 @@
 <page layout="admin-1column" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
 	<body>
 		<referenceContainer name="content">
-			<block class="Genaker\Opcache\Block\Adminhtml\Index\Index" name="index.index" template="Genaker_Opcache::index/index.phtml"/>
+			<block class="Hgati\Opcache\Block\Adminhtml\Index\Index" name="index.index" template="Hgati_Opcache::index/index.phtml"/>
 		</referenceContainer>
 	</body>
 </page>

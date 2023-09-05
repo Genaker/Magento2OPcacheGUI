@@ -5,7 +5,7 @@
  */
 declare(strict_types=1);
 
-namespace Genaker\Opcache\Controller\Adminhtml\Index;
+namespace Hgati\Opcache\Controller\Adminhtml\Index;
 
 class Index extends \Magento\Backend\App\Action
 {

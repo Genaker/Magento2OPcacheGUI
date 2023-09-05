@@ -1,13 +1,13 @@
 <?xml version="1.0" ?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
 	<menu>
-	<add id="Genaker_Opcache::index_main" 
+	<add id="Hgati_Opcache::index_main" 
 			 title="React"
 			 parent="Magento_Backend::system"
-             module="Genaker_Opcache"
+             module="Hgati_Opcache"
              sortOrder="120"
-             resource="Genaker_Opcache::index_index"
+             resource="Hgati_Opcache::index_index"
              />
-		<add action="opcache_gui/index/index" id="Genaker_Opcache::index_index" module="Genaker_Opcache"  resource="Genaker_Opcache::index_index" parent="Genaker_Opcache::index_main" sortOrder="9999" title="Opcache GUI"/>
+		<add action="opcache_gui/index/index" id="Hgati_Opcache::index_index" module="Hgati_Opcache"  resource="Hgati_Opcache::index_index" parent="Hgati_Opcache::index_main" sortOrder="9999" title="Opcache GUI"/>
 	</menu>
 </config>

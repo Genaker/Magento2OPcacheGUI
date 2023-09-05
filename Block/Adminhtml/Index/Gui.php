@@ -5,7 +5,7 @@
  */
 declare(strict_types=1);
 
-namespace Genaker\Opcache\Block\Adminhtml\Index;
+namespace Hgati\Opcache\Block\Adminhtml\Index;
 
 class Gui extends \Magento\Backend\Block\Template
 {

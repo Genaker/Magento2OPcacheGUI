@@ -13,7 +13,7 @@ class ComposerStaticInit6dd892b06e7f68518f1e1acceaa782b7
     public static $prefixLengthsPsr4 = array (
         'G' => 
         array (
-            'Genaker\\Opcache\\' => 16,
+            'Hgati\\Opcache\\' => 16,
         ),
         'A' => 
         array (
@@ -22,7 +22,7 @@ class ComposerStaticInit6dd892b06e7f68518f1e1acceaa782b7
     );
 
     public static $prefixDirsPsr4 = array (
-        'Genaker\\Opcache\\' => 
+        'Hgati\\Opcache\\' => 
         array (
             0 => __DIR__ . '/../..' . '/',
         ),

@@ -6,6 +6,6 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Genaker\\Opcache\\' => array($baseDir . '/'),
+    'Hgati\\Opcache\\' => array($baseDir . '/'),
     'Amnuts\\' => array($vendorDir . '/amnuts/opcache-gui/src'),
 );

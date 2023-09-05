@@ -5,5 +5,5 @@
  */
 use Magento\Framework\Component\ComponentRegistrar;
 
-ComponentRegistrar::register(ComponentRegistrar::MODULE, 'Genaker_Opcache', __DIR__);
+ComponentRegistrar::register(ComponentRegistrar::MODULE, 'Hgati_Opcache', __DIR__);
 
