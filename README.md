@@ -27,9 +27,13 @@ Check your PHP settings with this module:
 ```
 opcache.enable = 1
 opcache.enable_cli = 0
-opcache.memory_consumption = 356
-opcache.max_accelerated_files = 100000
+opcache.memory_consumption = 556
+opcache.max_accelerated_files = 1000000
 opcache.validate_timestamps = 0
+opcache.interned_strings_buffer=64
+opcache.max_wasted_percentage=5
+opcache.save_comments=0
+opcache.fast_shutdown=1
 ```
 # PHP performance measurement
 
