@@ -32,7 +32,7 @@ opcache.max_accelerated_files = 1000000
 opcache.validate_timestamps = 0
 opcache.interned_strings_buffer=64
 opcache.max_wasted_percentage=5
-opcache.save_comments=0
+opcache.save_comments=1
 opcache.fast_shutdown=1
 ```
 # PHP performance measurement
