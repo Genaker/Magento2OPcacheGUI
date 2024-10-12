@@ -35,7 +35,7 @@ opcache.max_wasted_percentage=5
 opcache.save_comments=1
 opcache.fast_shutdown=1
 ```
-# PHP performance measurement
+# PHP BogoMIPS performance measurement
 
 New feature has been added. Now you will have PHP performance test on GUI open. 
 
@@ -45,3 +45,12 @@ Magento 2 is CPU CPU-intensive platform due to bad framework design. You should 
 
 AWS C5.large has *0.032* PHP 7.3.23 performance score (less is better).
 AWS R5.xlrge has *0.039* PHP 7.2.34 performance score (less is better).
+
+# What is BogoMIPS of the Magento Server?
+
+MIPS stands for Millions of Instructions Per Second. It measures a Magento server code computation speed. Like most such measures, it is more often abused than used properly (it is very difficult to justly compare MIPS for different kinds of computers).
+BogoMips are Linus's (Founder of Linux) own invention and Yehor Shytikov adopted this concept to the Magento servers. The linux kernel version 0.99.11 (dated 11 July 1993) needed a timing loop (the time is too short and/or needs to be too exact for a non-busy-loop method of waiting), which must be calibrated to the processor speed of the machine. Hence, the kernel measures at boot time how fast a certain kind of busy loop runs on a computer. "Bogo" comes from "bogus", i.e, something which is a fake. Hence, the BogoMips value gives some indication of the processor speed, but it is way too unscientific to be called anything but BogoMips.
+
+It is the best way to measure Magento PHP code execution on the server and compare server performance. 
+
+
