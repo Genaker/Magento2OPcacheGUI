@@ -35,6 +35,22 @@ opcache.max_wasted_percentage=5
 opcache.save_comments=1
 opcache.fast_shutdown=1
 ```
+
+# CLI opcache settings 
+should be a separate cli config file like */etc/php/8.1/cli/conf.d/10-opcache.ini*
+```
+zend_extension=opcache.so
+opcache.memory_consumption=1000M
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=10000000
+opcache.validate_timestamps=1
+; opcache.revalidate_freq=2
+opcache.enable_cli=1
+opcache.file_cache=/tmp/
+opcache.file_cache_only=0
+opcache.file_cache_consistency_checks=1
+```  
+
 # PHP BogoMIPS performance measurement
 
 New feature has been added. Now you will have PHP performance test on GUI open. 
