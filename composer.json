@@ -10,6 +10,9 @@
         }
     ],
     "minimum-stability": "dev",
+    "require": {
+        "amnuts/opcache-gui": "^3.0"
+    },
     "autoload": {
         "psr-4": {
             "Genaker\\Opcache\\": ""
