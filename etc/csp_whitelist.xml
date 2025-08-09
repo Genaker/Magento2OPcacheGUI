@@ -1,9 +1,39 @@
 <?xml version="1.0"?>
-<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
+<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
     <policies>
         <policy id="script-src">
             <values>
-                <value id="react" type="host">https://unpkg.com</value>
+                <!-- Cloudflare CDN -->
+                <value id="cloudflare-cdn" type="host">https://cdnjs.cloudflare.com</value>
+                <value id="cloudflare-cdn-alt" type="host">cdnjs.cloudflare.com</value>
+                
+                <!-- jsDelivr CDN
+                <value id="jsdelivr-cdn" type="host">https://cdn.jsdelivr.net</value>
+                <value id="jsdelivr-cdn-alt" type="host">cdn.jsdelivr.net</value>
+                 -->
+                
+                <!-- unpkg CDN
+                <value id="unpkg-cdn" type="host">https://unpkg.com</value>
+                <value id="unpkg-cdn-alt" type="host">unpkg.com</value>
+                 -->
+            </values>
+        </policy>
+        <policy id="style-src">
+            <values>
+                <!-- Cloudflare CDN -->
+                <value id="cloudflare-cdn-styles" type="host">https://cdnjs.cloudflare.com</value>
+                <value id="cloudflare-cdn-styles-alt" type="host">cdnjs.cloudflare.com</value>
+                
+                <!-- jsDelivr CDN 
+                <value id="jsdelivr-cdn-styles" type="host">https://cdn.jsdelivr.net</value>
+                <value id="jsdelivr-cdn-styles-alt" type="host">cdn.jsdelivr.net</value>
+                -->
+                
+                <!-- unpkg CDN 
+                <value id="unpkg-cdn-styles" type="host">https://unpkg.com</value>
+                <value id="unpkg-cdn-styles-alt" type="host">unpkg.com</value>
+                -->
             </values>
         </policy>
     </policies>

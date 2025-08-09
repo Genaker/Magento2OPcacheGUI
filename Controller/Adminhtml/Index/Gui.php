@@ -34,13 +34,9 @@ class Gui extends \Magento\Backend\App\Action
      */
     public function execute()
     {
-   
-        //$this->addData(array('cache_lifetime' => null));
-        /*return $this->resultPageFactory->create(false, [
-            'template' => 'Genaker_Opcache::index/gui.phtml'
-        ]);*/
-	    require __DIR__ . '/../../../view/adminhtml/templates/index/gui.phtml';
-        die();
-
+        $resultPage = $this->resultPageFactory->create();
+        $resultPage->getConfig()->getTitle()->prepend(__('OPcache Management GUI'));
+        
+        return $resultPage;
     }
 }

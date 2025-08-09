@@ -1,17 +1,44 @@
 <?xml version="1.0"?>
-<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="admin-empty" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd" >
-<body>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    layout="admin-empty" 
+    xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <title>OPcache Console GUI</title>
+    
+        <!-- RequireJS + config -->
+        <remove src="requirejs/require.js"/>
+        <remove src="mage/requirejs/mixins.js"/>
+        <remove src="requirejs-config.js"/>
 
-<referenceContainer name="head" remove="true"/>
-<referenceContainer name="header" remove="true"/>
-<referenceContainer name="menu" remove="true"/>
-<referenceContainer name="notifications" remove="true"/>
-<referenceContainer name="footer" remove="true"/>
-<referenceContainer name="content" remove="true"/>
- <!--  <referenceContainer name="content">
-      <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" name="index.gui" template="Genaker_Opcache::index/gui.phtml"/>
-    </referenceContainer>
--->
-     <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" name="index.gui" template="Genaker_Opcache::index/gui.phtml"/>
-</body>
+        <!-- Core JS that pulls in UI stuff -->
+        <remove src="jquery/jquery.min.js"/>
+        <remove src="mage/bootstrap.js"/>
+
+        <!-- Admin CSS -->
+        <remove src="Magento_Backend::styles.css"/>
+        <remove src="Magento_Ui::css/styles.css"/>
+        <remove src="css/styles-m.css"/>
+        <remove src="css/styles-l.css"/>
+        
+        <!-- ExtJS and additional CSS files -->
+        <remove src="extjs/resources/css/ext-all.css"/>
+        <remove src="extjs/resources/css/ytheme-magento.css"/>
+        <remove src="jquery/uppy/dist/uppy-custom.css"/>
+        <remove src="jquery/jstree/themes/default/style.css"/>
+        <remove src="css/styles-old.css"/>
+        <remove src="css/styles.css"/>
+    </head>
+    <body>
+        <referenceContainer name="head" remove="true"/>
+        <referenceContainer name="header" remove="true"/>
+        <referenceContainer name="menu" remove="true"/>
+        <referenceContainer name="notifications" remove="true"/>
+        <referenceContainer name="footer" remove="true"/>
+        
+        <container name="opcache.content" htmlTag="div" htmlClass="opcache-iframe-content">
+            <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" 
+                   name="opcache.gui" 
+                   template="Genaker_Opcache::index/gui.phtml"/>
+        </container>
+    </body>
 </page>

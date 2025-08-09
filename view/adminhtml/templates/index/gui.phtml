@@ -1,51 +1,1097 @@
 <style>
-    .test-result {
-    padding-bottom: 5px;
-    font-size: 20px;
-    color: greenyellow;
-    background-color: black;
-	}
-    .test-error {
-    color: red;
-    font-size: 20px;
-    font-weight: 600;
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
+    
+    .opcache-gui {
+        background-color: white;
+    }
+
+    
+    body {
+        background: #000000;
+        --color: #00ff00;
+
+    }
+    
+    .opcache-iframe-content {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: #000000;
+    }
+    
+    .console-container {
+        background: #000000;
+        color: #00ff00;
+        min-height: 100%;
+        height: 100%;
+        width: 100%;
+        padding: 10px;
+        font-family: 'Courier New', 'Liberation Mono', monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        border: 1px solid #333333;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .console-header {
+        border-bottom: 1px solid #333333;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        color: #00ffff;
+    }
+    
+    .console-title {
+        color: #00ffff;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .console-subtitle {
+        color: #ffff00;
+        font-size: 14px;
+        margin: 10px 0;
+        border-bottom: 1px solid #333333;
+        padding-bottom: 5px;
+    }
+    
+    .test-result {
+        color: #00ff00;
+        background: #001100;
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-left: 3px solid #00ff00;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .test-result:before {
+        content: "✓ ";
+        color: #00ff00;
+        font-weight: bold;
+    }
+    
+    .test-error {
+        color: #ff0000;
+        background: #110000;
+        padding: 5px 10px;
+        margin: 2px 0;
+        border-left: 3px solid #ff0000;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+    
+    .test-error:before {
+        content: "✗ ERROR: ";
+        color: #ff0000;
+        font-weight: bold;
+    }
+    
+    .performance-card {
+        margin: 15px 0;
+        border: 1px solid #333333;
+        background: #001122;
+    }
+    
+    .performance-card-header {
+        background: #002244;
+        padding: 10px;
+        border-bottom: 1px solid #333333;
+    }
+    
+    .performance-card-header h2 {
+        margin: 0;
+        font-size: 14px;
+        color: #00ffff;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+    
+    .performance-card-body {
+        padding: 15px;
+        background: #000011;
+    }
+    
+    .performance-warning {
+        color: #ffff00;
+        background: #221100;
+        padding: 5px 10px;
+        margin: 5px 0;
+        border-left: 3px solid #ffff00;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .performance-warning:before {
+        content: "⚠ WARNING: ";
+        color: #ffff00;
+        font-weight: bold;
+    }
+    
+    .performance-result {
+        color: #00dddd;
+        background: #001111;
+        padding: 3px 10px;
+        margin: 2px 0;
+        border-left: 2px solid #00dddd;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .performance-result:before {
+        content: "→ ";
+        color: #00dddd;
+    }
+    
+    .performance-error {
+        color: #ff0000;
+        background: #220000;
+        padding: 5px 10px;
+        margin: 5px 0;
+        border-left: 3px solid #ff0000;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+    
+    .performance-error:before {
+        content: "✗ CRITICAL: ";
+        color: #ff0000;
+        font-weight: bold;
+    }
+    
+    .opcache-dashboard {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #333333;
+        background: #000022;
+    }
+    
+    .console-prompt {
+        color: #00ff00;
+        font-weight: bold;
+    }
+    
+    .console-prompt:before {
+        content: "root@opcache:~$ ";
+        color: #00ffff;
+    }
+    
+    .console-container h1, .console-container h2, .console-container h3 {
+        color: #00ffff;
+        font-family: 'Courier New', monospace;
+        margin: 10px 0 5px 0;
+    }
+    
+    /* Scrollbar styling for webkit browsers */
+    ::-webkit-scrollbar {
+        width: 12px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #000000;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #333333;
+        border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555555;
+    }
+    .menu-wrapper {
+        display: none;
+    }
+
 </style>
 
+<div class="console-container">
+    <div class="console-header">
+        <div class="console-title">╔══════════════════════════════════════╗</div>
+        <div class="console-title">║&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PHP OPcache Monitoring Tool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║</div>
+        <div class="console-title">╚══════════════════════════════════════╝</div>
+    </div>
+
 <?php
-//echo "<h1> PHP Op-Cache GUI </h1>";
-echo '<h2>PHP Performance test </h2>';
+echo '<div class="console-subtitle">[PERFORMANCE BENCHMARK]</div>';
 
-function testPHP(){
-$start = microtime(TRUE);
-/* Start of the code to profile */ 
-for ($a = 0; $a < 10000000; $a++) { $b = $a*$a; }
-/* End of the code to profile */ 
-$end = microtime(TRUE);
-return $end - $start;
+// Performance Test Functions
+function testCPUPerformance(){
+    $start = microtime(TRUE);
+    for ($a = 0; $a < 10000000; $a++) { $b = $a * $a; }
+    $end = microtime(TRUE);
+    return $end - $start;
 }
-echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
-echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
-echo "<div class='test-result'> > The Test code snippet took " . testPHP() . " seconds to complete. </div>";
 
-echo '<h2>PHP Opcahe test</h2>';
+function testMemoryAllocation(){
+    $start = microtime(TRUE);
+    $memory_start = memory_get_usage();
+    $array = [];
+    for ($i = 0; $i < 100000; $i++) {
+        $array[] = str_repeat('x', 100);
+    }
+    $memory_end = memory_get_usage();
+    $end = microtime(TRUE);
+    unset($array);
+    return [
+        'time' => $end - $start,
+        'memory' => $memory_end - $memory_start
+    ];
+}
 
-if(extension_loaded('Zend OPcache')){
-	$free_memory = opcache_get_status(false)['memory_usage']['free_memory'];
-	$validate_timestamps = opcache_get_configuration()['directives']['opcache.validate_timestamps'];
-	if ($free_memory < 1000000){
-    		echo "<div class='test-error'>Increase OpCache Memory - Not Enought Memory</div>";
-	}
-	if ($validate_timestamps === true){
-    		echo "<div class='test-error'>Disable Timestamp Validation on production server</div>";
-	}
+function testFileOperations(){
+    $start = microtime(TRUE);
+    $temp_file = sys_get_temp_dir() . '/magento_perf_test.tmp';
+    
+    // Write test
+    file_put_contents($temp_file, str_repeat('Test data', 1000));
+    
+    // Read test
+    for ($i = 0; $i < 100; $i++) {
+        $content = file_get_contents($temp_file);
+    }
+    
+    // Cleanup
+    unlink($temp_file);
+    
+    $end = microtime(TRUE);
+    return $end - $start;
+}
+
+function testDatabaseOperations(){
+    $start = microtime(TRUE);
+    try {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
+        $connection = $resource->getConnection();
+        
+        // Simple query test
+        for ($i = 0; $i < 10; $i++) {
+            $result = $connection->fetchAll("SELECT 1 as test");
+        }
+        
+        $end = microtime(TRUE);
+        return $end - $start;
+    } catch (\Exception $e) {
+        return 'ERROR: ' . $e->getMessage();
+    }
+}
+
+function testMySQLLatency(){
+    try {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
+        $connection = $resource->getConnection();
+        
+        // Perform 10 latency tests
+        $latencies = [];
+        for ($i = 0; $i < 10; $i++) {
+            $start = microtime(TRUE);
+            $result = $connection->fetchAll("SELECT 1");
+            $end = microtime(TRUE);
+            $latencies[] = $end - $start;
+        }
+        
+        // Calculate statistics
+        sort($latencies);
+        $stats = [
+            'best' => min($latencies),
+            'worst' => max($latencies),
+            'avg' => array_sum($latencies) / count($latencies),
+            'p95' => $latencies[floor(count($latencies) * 0.95)]
+        ];
+        
+        return $stats;
+    } catch (\Exception $e) {
+        return 'ERROR: ' . $e->getMessage();
+    }
+}
+
+function testRedisLatency(){
+    try {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        
+        // Try to get Redis connection from Magento's cache configuration
+        $cacheConfig = $objectManager->get(\Magento\Framework\App\DeploymentConfig::class);
+        $cacheSettings = $cacheConfig->get('cache');
+        
+        if (isset($cacheSettings['frontend']['default']['backend_options']['server'])) {
+            // Redis is configured, test connection
+            if (class_exists('Redis')) {
+                $redis = new \Redis();
+                $host = $cacheSettings['frontend']['default']['backend_options']['server'] ?? '127.0.0.1';
+                $port = $cacheSettings['frontend']['default']['backend_options']['port'] ?? 6379;
+                
+                if ($redis->connect($host, $port, 1)) {
+                    // Perform 10 latency tests
+                    $latencies = [];
+                    for ($i = 0; $i < 10; $i++) {
+                        $start = microtime(TRUE);
+                        $redis->ping();
+                        $end = microtime(TRUE);
+                        $latencies[] = $end - $start;
+                    }
+                    $redis->close();
+                    
+                    // Calculate statistics
+                    sort($latencies);
+                    $stats = [
+                        'best' => min($latencies),
+                        'worst' => max($latencies),
+                        'avg' => array_sum($latencies) / count($latencies),
+                        'p95' => $latencies[floor(count($latencies) * 0.95)]
+                    ];
+                    
+                    return $stats;
+                } else {
+                    return 'ERROR: Cannot connect to Redis server';
+                }
+            } else {
+                return 'ERROR: Redis extension not available';
+            }
+        } else {
+            // Try default Redis connection
+            if (class_exists('Redis')) {
+                $redis = new \Redis();
+                if ($redis->connect('127.0.0.1', 6379, 1)) {
+                    // Perform 10 latency tests
+                    $latencies = [];
+                    for ($i = 0; $i < 10; $i++) {
+                        $start = microtime(TRUE);
+                        $redis->ping();
+                        $end = microtime(TRUE);
+                        $latencies[] = $end - $start;
+                    }
+                    $redis->close();
+                    
+                    // Calculate statistics
+                    sort($latencies);
+                    $stats = [
+                        'best' => min($latencies),
+                        'worst' => max($latencies),
+                        'avg' => array_sum($latencies) / count($latencies),
+                        'p95' => $latencies[floor(count($latencies) * 0.95)]
+                    ];
+                    
+                    return $stats;
+                } else {
+                    return 'NOTICE: Redis not configured or not running';
+                }
+            } else {
+                return 'NOTICE: Redis extension not installed';
+            }
+        }
+    } catch (\Exception $e) {
+        return 'ERROR: ' . $e->getMessage();
+    }
+}
+
+// Run Performance Tests
+echo '<div class="console-prompt">Running CPU benchmark...</div>';
+$cpu_time = testCPUPerformance();
+echo "<div class='test-result'>CPU Performance: " . number_format($cpu_time, 4) . " seconds</div>";
+
+echo '<div class="console-prompt">Testing memory allocation...</div>';
+$memory_test = testMemoryAllocation();
+echo "<div class='test-result'>Memory Test: " . number_format($memory_test['time'], 4) . " seconds, " . 
+     number_format($memory_test['memory'] / 1024 / 1024, 2) . " MB allocated</div>";
+
+echo '<div class="console-prompt">Testing file I/O operations...</div>';
+$file_time = testFileOperations();
+echo "<div class='test-result'>File I/O Performance: " . number_format($file_time, 4) . " seconds</div>";
+
+echo '<div class="console-prompt">Testing database operations...</div>';
+$db_time = testDatabaseOperations();
+if (is_string($db_time)) {
+    echo "<div class='test-error'>Database Test: $db_time</div>";
 } else {
-	echo '<div  class="test-result">You do not have the Zend OPcache extension loaded. Opcache is not working </div>';
+    echo "<div class='test-result'>Database Performance: " . number_format($db_time, 4) . " seconds</div>";
 }
 
-
-if(extension_loaded('xdebug')){
-	echo "<div class='test-error'>X-Debug is enabled. It has huge performance overhed. Disable XDebuug on Production.</div>";
+echo '<div class="console-prompt">Testing MySQL latency (10 requests)...</div>';
+$mysql_latency = testMySQLLatency();
+if (is_string($mysql_latency)) {
+    echo "<div class='test-error'>MySQL Latency Test: $mysql_latency</div>";
+} else {
+    $avg_ms = $mysql_latency['avg'] * 1000;
+    $best_ms = $mysql_latency['best'] * 1000;
+    $worst_ms = $mysql_latency['worst'] * 1000;
+    $p95_ms = $mysql_latency['p95'] * 1000;
+    
+    // Determine overall status based on 95th percentile
+    if ($mysql_latency['p95'] > 0.1) {
+        $status_class = 'test-error';
+        $status_text = 'HIGH - consider optimization';
+    } elseif ($mysql_latency['p95'] > 0.05) {
+        $status_class = 'performance-warning';
+        $status_text = 'MODERATE';
+    } else {
+        $status_class = 'test-result';
+        $status_text = 'GOOD';
+    }
+    
+    echo "<div class='{$status_class}'>MySQL Latency ({$status_text}): Best: " . number_format($best_ms, 2) . "ms | Avg: " . number_format($avg_ms, 2) . "ms | 95th: " . number_format($p95_ms, 2) . "ms | Worst: " . number_format($worst_ms, 2) . "ms</div>";
 }
+
+echo '<div class="console-prompt">Testing Redis performance (10 requests)...</div>';
+$redis_latency = testRedisLatency();
+if (is_string($redis_latency)) {
+    echo "<div class='test-error'>Redis Test: $redis_latency</div>";
+} else {
+    $avg_ms = $redis_latency['avg'] * 1000;
+    $best_ms = $redis_latency['best'] * 1000;
+    $worst_ms = $redis_latency['worst'] * 1000;
+    $p95_ms = $redis_latency['p95'] * 1000;
+    
+    // Determine overall status based on 95th percentile (Redis should be faster)
+    if ($redis_latency['p95'] > 0.01) {
+        $status_class = 'performance-warning';
+        $status_text = 'HIGH for Redis';
+    } else {
+        $status_class = 'test-result';
+        $status_text = 'GOOD';
+    }
+    
+    echo "<div class='{$status_class}'>Redis Latency ({$status_text}): Best: " . number_format($best_ms, 2) . "ms | Avg: " . number_format($avg_ms, 2) . "ms | 95th: " . number_format($p95_ms, 2) . "ms | Worst: " . number_format($worst_ms, 2) . "ms</div>";
+}
+
+echo '<div class="console-subtitle">[OPCACHE STATUS]</div>';
+
+// OPcache Configuration Checks
+function checkOPcacheConfiguration() {
+    $checks = [];
+    
+    if (!extension_loaded('Zend OPcache')) {
+        $checks[] = ['type' => 'error', 'msg' => 'Zend OPcache extension is NOT LOADED - Critical performance impact'];
+        return $checks;
+    }
+    
+    $checks[] = ['type' => 'success', 'msg' => 'Zend OPcache extension: LOADED'];
+    
+    try {
+        $opcacheStatus = opcache_get_status(false);
+        $opcacheConfig = opcache_get_configuration();
+        
+        if (!is_array($opcacheStatus) || !is_array($opcacheConfig)) {
+            $checks[] = ['type' => 'error', 'msg' => 'OPcache status/configuration data unavailable'];
+            return $checks;
+        }
+        
+        // Check if OPcache is enabled
+        $enabled = $opcacheConfig['directives']['opcache.enable'] ?? false;
+        if (!$enabled) {
+            $checks[] = ['type' => 'error', 'msg' => 'OPcache is DISABLED - Enable opcache.enable in php.ini'];
+            return $checks;
+        }
+        $checks[] = ['type' => 'success', 'msg' => 'OPcache: ENABLED'];
+        
+        // Memory checks
+        $memoryUsed = $opcacheStatus['memory_usage']['used_memory'] ?? 0;
+        $memoryFree = $opcacheStatus['memory_usage']['free_memory'] ?? 0;
+        $memoryWasted = $opcacheStatus['memory_usage']['wasted_memory'] ?? 0;
+        $memoryTotal = $memoryUsed + $memoryFree + $memoryWasted;
+        $memoryConsumption = $opcacheConfig['directives']['opcache.memory_consumption'] ?? 0;
+        
+        // Check free memory (less than 32MB is concerning)
+        if ($memoryFree < 32 * 1024 * 1024) {
+            $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
+        } elseif ($memoryFree < 64 * 1024 * 1024) {
+            $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - LOW, consider increasing memory'];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - ADEQUATE'];
+        }
+        
+        // Check memory consumption setting
+        $memoryConsumption = $memoryConsumption / 1024 / 1024;
+        if ($memoryConsumption < 256) {
+            $checks[] = ['type' => 'warning', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB - Increase to 512MB+ for Magento'];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB'];
+        }
+        
+        // Check timestamp validation
+        $validateTimestamps = $opcacheConfig['directives']['opcache.validate_timestamps'] ?? null;
+        if ($validateTimestamps === true) {
+            $checks[] = ['type' => 'error', 'msg' => 'Timestamp validation: ENABLED - Disable opcache.validate_timestamps in production'];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => 'Timestamp validation: DISABLED - Optimal for production'];
+        }
+        
+        // Check max accelerated files
+        $maxFiles = $opcacheConfig['directives']['opcache.max_accelerated_files'] ?? 0;
+        if ($maxFiles < 100000) {
+            $checks[] = ['type' => 'warning', 'msg' => 'Max accelerated files: ' . number_format($maxFiles) . ' - Increase to 100,000+ for Magento'];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => 'Max accelerated files: ' . number_format($maxFiles)];
+        }
+        
+        // Check hit rate
+        if (isset($opcacheStatus['opcache_statistics']['hit_rate'])) {
+            $hitRate = $opcacheStatus['opcache_statistics']['hit_rate'];
+            if ($hitRate < 90) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - LOW, consider increasing memory or file limits'];
+            } elseif ($hitRate < 95) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - MODERATE'];
+            } else {
+                $checks[] = ['type' => 'success', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - EXCELLENT'];
+            }
+        }
+        
+        // Check cached scripts
+        if (isset($opcacheStatus['opcache_statistics']['num_cached_scripts'])) {
+            $cachedScripts = $opcacheStatus['opcache_statistics']['num_cached_scripts'];
+            $checks[] = ['type' => 'info', 'msg' => 'Cached scripts: ' . number_format($cachedScripts)];
+        }
+        
+        // Check wasted memory percentage
+        if ($memoryTotal > 0) {
+            $wastedPercent = ($memoryWasted / $memoryTotal) * 100;
+            if ($wastedPercent > 10) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Wasted memory: ' . number_format($wastedPercent, 1) . '% - HIGH, consider restarting or optimizing'];
+            } else {
+                $checks[] = ['type' => 'success', 'msg' => 'Wasted memory: ' . number_format($wastedPercent, 1) . '% - ACCEPTABLE'];
+            }
+        }
+        
+    } catch (\Exception $e) {
+        $checks[] = ['type' => 'error', 'msg' => 'OPcache check error: ' . $e->getMessage()];
+    }
+    
+    // Check for Xdebug
+    if (extension_loaded('xdebug')) {
+        $checks[] = ['type' => 'error', 'msg' => 'Xdebug: ENABLED - CRITICAL performance impact, disable on production'];
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => 'Xdebug: NOT DETECTED - Good for production'];
+    }
+    
+    return $checks;
+}
+
+displayChecks('OPcache Status:', checkOPcacheConfiguration());
+
+echo '<div class="console-subtitle">[PHP CONFIGURATION ANALYSIS]</div>';
+
+// PHP Configuration Checks
+function checkPHPConfiguration() {
+    $checks = [];
+    
+    // Memory Limit
+    $memory_limit = ini_get('memory_limit');
+    $memory_bytes = str_replace(['K', 'M', 'G'], ['000', '000000', '000000000'], $memory_limit);
+    $memory_mb = (int)$memory_bytes / 1024 / 1024;
+    
+    if ($memory_mb < 2048) {
+        $checks[] = ['type' => 'error', 'msg' => "Memory limit too low: {$memory_limit}. Recommended: 2G+"];
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => "Memory limit: {$memory_limit}"];
+    }
+    
+    // Max Execution Time
+    $max_exec = ini_get('max_execution_time');
+    if ($max_exec > 0 && $max_exec < 1800) {
+        $checks[] = ['type' => 'warning', 'msg' => "Max execution time: {$max_exec}s. Consider 1800+ for deployments"];
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => "Max execution time: " . ($max_exec == 0 ? 'unlimited' : $max_exec . 's')];
+    }
+    
+    // File Upload Limits
+    $upload_max = ini_get('upload_max_filesize');
+    $post_max = ini_get('post_max_size');
+    $checks[] = ['type' => 'info', 'msg' => "Upload limits: {$upload_max} (upload), {$post_max} (post)"];
+    
+    // Required Extensions
+    $required_extensions = [
+        'curl' => 'cURL for API calls',
+        'gd' => 'GD for image processing', 
+        'intl' => 'Internationalization',
+        'mbstring' => 'Multibyte strings',
+        'soap' => 'SOAP web services',
+        'zip' => 'ZIP file handling',
+        'bcmath' => 'Precision mathematics'
+    ];
+    
+    foreach ($required_extensions as $ext => $desc) {
+        if (extension_loaded($ext)) {
+            $checks[] = ['type' => 'success', 'msg' => "Extension {$ext}: LOADED ({$desc})"];
+        } else {
+            $checks[] = ['type' => 'error', 'msg' => "Extension {$ext}: MISSING - {$desc}"];
+        }
+    }
+    
+    // Performance Extensions
+    $performance_extensions = [
+        'Zend OPcache' => 'PHP bytecode caching',
+        'redis' => 'Redis cache support',
+        'memcached' => 'Memcached support',
+        'imagick' => 'Advanced image processing'
+    ];
+    
+    foreach ($performance_extensions as $ext => $desc) {
+        if (extension_loaded($ext)) {
+            $checks[] = ['type' => 'success', 'msg' => "Performance extension {$ext}: AVAILABLE ({$desc})"];
+        } else {
+            $checks[] = ['type' => 'warning', 'msg' => "Performance extension {$ext}: NOT FOUND - {$desc}"];
+        }
+    }
+    
+    return $checks;
+}
+
+// Server Configuration Checks
+function checkServerConfiguration() {
+    $checks = [];
+    
+    // Server Software
+    $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
+    $checks[] = ['type' => 'info', 'msg' => "Server: {$server_software}"];
+    
+    // Document Root Permissions
+    $doc_root = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    if ($doc_root && is_writable($doc_root)) {
+        $checks[] = ['type' => 'warning', 'msg' => "Document root is writable - security risk"];
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => "Document root permissions: OK"];
+    }
+    
+    // Disk Space Check
+    $free_space = disk_free_space('.');
+    $total_space = disk_total_space('.');
+    $free_gb = round($free_space / 1024 / 1024 / 1024, 2);
+    $total_gb = round($total_space / 1024 / 1024 / 1024, 2);
+    $usage_pct = round((($total_space - $free_space) / $total_space) * 100, 1);
+    
+    if ($usage_pct > 90) {
+        $checks[] = ['type' => 'error', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
+    } elseif ($usage_pct > 80) {
+        $checks[] = ['type' => 'warning', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
+    }
+    
+    // Load Average (Linux only)
+    if (function_exists('sys_getloadavg')) {
+        $load = sys_getloadavg();
+        $load_str = implode(', ', array_map(function($l) { return number_format($l, 2); }, $load));
+        $checks[] = ['type' => 'info', 'msg' => "Load average: {$load_str}"];
+    }
+    
+    return $checks;
+}
+
+// Magento Configuration Checks
+function checkMagentoConfiguration() {
+    $checks = [];
+    
+    try {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        
+        // Magento Version Check
+        $productMetadata = $objectManager->get(\Magento\Framework\App\ProductMetadataInterface::class);
+        $magentoVersion = $productMetadata->getVersion();
+        $magentoEdition = $productMetadata->getEdition();
+        
+        // Check if version is up to date (2.4.8+ is latest as of 2024)
+        if (version_compare($magentoVersion, '2.4.8', '<=')) {
+            if (version_compare($magentoVersion, '2.4.6', '<=')) { // 2.4.6 is the EOL version as of 2025
+                $checks[] = ['type' => 'error', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - OUTDATED, upgrade to 2.4.7+ for security patches and performance"];
+            } else {
+                $checks[] = ['type' => 'warning', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - Upgrade to 2.4.7+ for latest features and security"];
+            }
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - CURRENT"];
+        }
+        
+        // Deployment Mode
+        $state = $objectManager->get(\Magento\Framework\App\State::class);
+        $mode = $state->getMode();
+        
+        if ($mode === 'production') {
+            $checks[] = ['type' => 'success', 'msg' => "Deployment mode: PRODUCTION"];
+        } elseif ($mode === 'developer') {
+            $checks[] = ['type' => 'warning', 'msg' => "Deployment mode: DEVELOPER (not for production)"];
+        } else {
+            $checks[] = ['type' => 'warning', 'msg' => "Deployment mode: {$mode}"];
+        }
+        
+        // Cache Status
+        $cacheManager = $objectManager->get(\Magento\Framework\App\Cache\Manager::class);
+        $cacheStatus = $cacheManager->getStatus();
+        $enabled_caches = array_filter($cacheStatus);
+        $disabled_caches = array_diff_key($cacheStatus, $enabled_caches);
+        
+        $checks[] = ['type' => 'info', 'msg' => "Cache types enabled: " . count($enabled_caches) . "/" . count($cacheStatus)];
+        
+        if (count($disabled_caches) > 0) {
+            $checks[] = ['type' => 'warning', 'msg' => "Disabled caches: " . implode(', ', array_keys($disabled_caches))];
+        }
+        
+        // Full Page Cache
+        if (isset($enabled_caches['full_page'])) {
+            $checks[] = ['type' => 'success', 'msg' => "Full Page Cache: ENABLED"];
+        } else {
+            $checks[] = ['type' => 'error', 'msg' => "Full Page Cache: DISABLED - Critical for performance"];
+        }
+        
+        // JS/CSS Performance Settings
+        $scopeConfig = $objectManager->get(\Magento\Framework\App\Config\ScopeConfigInterface::class);
+        
+        // JavaScript Bundling Check
+        $jsBundling = $scopeConfig->getValue('dev/js/enable_js_bundling', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        if ($jsBundling) {
+            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Bundling: ENABLED - Can cause performance issues, consider disabling"];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "JavaScript Bundling: DISABLED"];
+        }
+        
+        // CSS Merge Check
+        $cssMerge = $scopeConfig->getValue('dev/css/merge_css_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        if ($cssMerge) {
+            $checks[] = ['type' => 'warning', 'msg' => "CSS Merge: ENABLED - Can cause performance issues, consider disabling"];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "CSS Merge: DISABLED"];
+        }
+        
+        // JS Merge Check
+        $jsMerge = $scopeConfig->getValue('dev/js/merge_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        if ($jsMerge) {
+            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Merge: ENABLED - Can cause performance issues, consider disabling"];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "JavaScript Merge: DISABLED"];
+        }
+        
+        // CSS/JS Minification
+        $cssMinify = $scopeConfig->getValue('dev/css/minify_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        $jsMinify = $scopeConfig->getValue('dev/js/minify_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        
+        if ($cssMinify) {
+            $checks[] = ['type' => 'success', 'msg' => "CSS Minification: ENABLED"];
+        } else {
+            $checks[] = ['type' => 'warning', 'msg' => "CSS Minification: DISABLED - Enable for production"];
+        }
+        
+        if ($jsMinify) {
+            $checks[] = ['type' => 'success', 'msg' => "JavaScript Minification: ENABLED"];
+        } else {
+            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Minification: DISABLED - Enable for production"];
+        }
+        
+        // Template Minification
+        $htmlMinify = $scopeConfig->getValue('dev/template/minify_html', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        if ($htmlMinify) {
+            $checks[] = ['type' => 'success', 'msg' => "HTML Minification: ENABLED"];
+        } else {
+            $checks[] = ['type' => 'info', 'msg' => "HTML Minification: DISABLED"];
+        }
+        
+        // Check for Hyva Theme (License Compliance)
+        $moduleManager = $objectManager->get(\Magento\Framework\Module\Manager::class);
+        $hyvaModules = [
+            'Hyva_Theme',
+            'Hyva_Base',
+            'Hyva_GraphqlViewModel'
+        ];
+        
+        $hyvaDetected = false;
+        foreach ($hyvaModules as $hyvaModule) {
+            if ($moduleManager->isEnabled($hyvaModule)) {
+                $hyvaDetected = true;
+                break;
+            }
+        }
+        
+        if ($hyvaDetected) {
+            $checks[] = ['type' => 'error', 'msg' => "Hyva Theme DETECTED - WARNING: Hyva is a commercial theme. Using it with Magento Open Source may violate licensing terms. Ask Adobe to provide a clarification and audit for this case"];
+                 } else {
+             $checks[] = ['type' => 'success', 'msg' => "Hyva Theme: NOT DETECTED"];
+         }
+         
+         
+                  // Additional check if module is enabled
+         if ($moduleManager->isEnabled('React_React')) {
+             $checks[] = ['type' => 'success', 'msg' => "React Luma Module: ENABLED"];
+         } else {
+             $checks[] = ['type' => 'warning', 'msg' => "React Luma Module: NOT INSTALLED - Install this opensource module for frontend Google Page Speed performance benefits"];
+         }
+         
+         // Check for Mage_FPC Performance Module
+         if ($moduleManager->isEnabled('Mage_FPC')) {
+             $checks[] = ['type' => 'success', 'msg' => "Mage FPC Module: ENABLED - Enhanced Full Page Cache performance active"];
+         } else {
+             // Check if the module is installed but not enabled
+                $checks[] = ['type' => 'warning', 'msg' => "Mage FPC Module: NOT INSTALLED - Recommended for improved Full Page Cache performance. Install with: composer require mage/fpc"];
+         }
+    } catch (\Exception $e) {
+        $checks[] = ['type' => 'error', 'msg' => "Magento check error: " . $e->getMessage()];
+    }
+    
+    return $checks;
+}
+
+// Display all checks
+function displayChecks($title, $checks) {
+    echo "<div class='console-prompt'>{$title}</div>";
+    foreach ($checks as $check) {
+        $class = '';
+        switch ($check['type']) {
+            case 'success':
+                $class = 'test-result';
+                break;
+            case 'error':
+                $class = 'test-error';
+                break;
+            case 'warning':
+                $class = 'performance-warning';
+                break;
+            case 'info':
+            default:
+                $class = 'performance-result';
+                break;
+        }
+        echo "<div class='{$class}'>{$check['msg']}</div>";
+    }
+}
+
+// Run all configuration checks
+displayChecks('PHP Configuration:', checkPHPConfiguration());
+displayChecks('Server Configuration:', checkServerConfiguration());
+displayChecks('Magento Configuration:', checkMagentoConfiguration());
+
+echo '<div class="console-subtitle">[SECURITY ANALYSIS]</div>';
+
+// Security Checks
+function checkSecurity() {
+    $checks = [];
+    
+    // PHP Version - More comprehensive check
+    $php_version = PHP_VERSION;
+    if (version_compare($php_version, '8.3.0', '<')) {
+        if (version_compare($php_version, '8.2.0', '<')) {
+            if (version_compare($php_version, '8.1.0', '<')) {
+                $checks[] = ['type' => 'error', 'msg' => "PHP version: {$php_version} - OUTDATED, upgrade to PHP 8.3+ for security and performance"];
+            } else {
+                $checks[] = ['type' => 'warning', 'msg' => "PHP version: {$php_version} - Upgrade to PHP 8.3+ for latest features and performance"];
+            }
+        } else {
+            $checks[] = ['type' => 'warning', 'msg' => "PHP version: {$php_version} - Consider upgrading to PHP 8.3+ for optimal performance"];
+        }
+    } else {
+        $checks[] = ['type' => 'success', 'msg' => "PHP version: {$php_version} - LATEST"];
+    }
+    
+    // Dangerous Functions
+    $dangerous_functions = ['exec', 'shell_exec', 'system', 'passthru', 'eval'];
+    $disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
+    
+    foreach ($dangerous_functions as $func) {
+        if (function_exists($func) && !in_array($func, $disabled_functions)) {
+            $checks[] = ['type' => 'warning', 'msg' => "Dangerous function {$func}() is ENABLED"];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "Dangerous function {$func}() is DISABLED"];
+        }
+    }
+    
+    // File Permissions
+    $sensitive_dirs = [
+        'app/etc' => 'Configuration directory',
+        'var/log' => 'Log directory',
+        'pub/media' => 'Media directory'
+    ];
+    
+    foreach ($sensitive_dirs as $dir => $desc) {
+        if (is_dir($dir)) {
+            $perms = substr(sprintf('%o', fileperms($dir)), -4);
+            if ($perms > '0755') {
+                $checks[] = ['type' => 'warning', 'msg' => "{$desc} permissions: {$perms} - too permissive"];
+            } else {
+                $checks[] = ['type' => 'success', 'msg' => "{$desc} permissions: {$perms}"];
+            }
+        }
+    }
+    
+    return $checks;
+}
+
+displayChecks('Security Configuration:', checkSecurity());
+?>
+<?php
+// Initialize escaper at the top for the entire template
+$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+$escaper = $objectManager->get(\Magento\Framework\Escaper::class);
+?>
+
+<div class="performance-card">
+    <div class="performance-card-header">
+        <h2><?= $escaper->escapeHtml(__('PHP OPcache Status Check')) ?></h2>
+    </div>
+    <div class="performance-card-body">
+        <?php
+        /**
+         * @var \Genaker\Opcache\Block\Adminhtml\Index\Gui $block
+         */
+        
+        /**
+         * Check OPcache status and configuration
+         * Provides warnings about suboptimal settings
+         */
+        if (extension_loaded('Zend OPcache') && is_array(opcache_get_status())) {
+            try {
+                // Get OPcache status and configuration
+                $opcacheStatus = opcache_get_status(false);
+                $opcacheConfig = opcache_get_configuration();
+                
+                // Check OPcache status is valid
+                if (!is_array($opcacheStatus) || !is_array($opcacheConfig)) {
+                    throw new \RuntimeException('Invalid OPcache status or configuration data');
+                }
+                
+                // Calculate OPcache memory usage
+                $memoryUsed = $opcacheStatus['memory_usage']['used_memory'] ?? 0;
+                $memoryFree = $opcacheStatus['memory_usage']['free_memory'] ?? 0;
+                $memoryWasted = $opcacheStatus['memory_usage']['wasted_memory'] ?? 0;
+                $memoryTotal = $memoryUsed + $memoryFree + $memoryWasted;
+                
+                // Get key settings
+                $validateTimestamps = $opcacheConfig['directives']['opcache.validate_timestamps'] ?? null;
+                $revalidateFreq = $opcacheConfig['directives']['opcache.revalidate_freq'] ?? null;
+                $maxAcceleratedFiles = $opcacheConfig['directives']['opcache.max_accelerated_files'] ?? null;
+                $memoryConsumption = $opcacheConfig['directives']['opcache.memory_consumption'] / 1024 / 1024 ?? null;
+                
+                // Memory utilization percentage
+                $memoryUtilizationPct = ($memoryTotal > 0) ? ($memoryUsed / $memoryTotal) * 100 : 0;
+                
+                // Check for insufficient memory (less than 32MB free)
+                if ($memoryFree < 32 * 1024 * 1024) {
+                    echo '<div class="performance-warning">' .
+                        '<strong>' . $escaper->escapeHtml(__('Warning')) . ':</strong> ' .
+                        $escaper->escapeHtml(__('Low OPcache free memory. Consider increasing opcache.memory_consumption.')) .
+                        ' ' . $escaper->escapeHtml(__('Current free memory:')) . ' ' .
+                        $escaper->escapeHtml(number_format($memoryFree / 1024 / 1024, 2)) . ' MB' .
+                    '</div>';
+                }
+                
+                // Check for timestamp validation in production
+                if ($validateTimestamps === true) {
+                    echo '<div class="performance-warning">' .
+                        '<strong>' . $escaper->escapeHtml(__('Warning')) . ':</strong> ' .
+                        $escaper->escapeHtml(__('Timestamp validation is enabled. For optimal performance in production, disable opcache.validate_timestamps in php.ini')) .
+                    '</div>';
+                }
+                
+                // Check for low max_accelerated_files
+                if ($maxAcceleratedFiles !== null && $maxAcceleratedFiles < 50000) {
+                    echo '<div class="performance-warning">' .
+                        '<strong>' . $escaper->escapeHtml(__('Warning')) . ':</strong> ' .
+                        $escaper->escapeHtml(__('Low max_accelerated_files setting. For Magento 2, at least 50,000 is recommended.')) .
+                        ' ' . $escaper->escapeHtml(__('Current setting:')) . ' ' .
+                        $escaper->escapeHtml(number_format($maxAcceleratedFiles)) .
+                    '</div>';
+                }
+                
+                // Check for low memory_consumption
+                if ($memoryConsumption !== null && $memoryConsumption < 256) {
+                    echo '<div class="performance-warning">' .
+                        '<strong>' . $escaper->escapeHtml(__('Warning')) . ':</strong> ' .
+                        $escaper->escapeHtml(__('Low memory_consumption setting. For Magento 2, at least 256MB is recommended.')) .
+                        ' ' . $escaper->escapeHtml(__('Current setting:')) . ' ' .
+                        $escaper->escapeHtml($memoryConsumption) . ' MB' .
+                    '</div>';
+                }
+                
+                // Display OPcache memory stats
+                echo '<div class="performance-result">' .
+                    $escaper->escapeHtml(__('Memory Usage:')) . ' ' .
+                    $escaper->escapeHtml(number_format($memoryUsed / 1024 / 1024, 2)) . ' MB ' . $escaper->escapeHtml(__('used')) . ', ' .
+                    $escaper->escapeHtml(number_format($memoryFree / 1024 / 1024, 2)) . ' MB ' . $escaper->escapeHtml(__('free')) . ', ' .
+                    $escaper->escapeHtml(number_format($memoryWasted / 1024 / 1024, 2)) . ' MB ' . $escaper->escapeHtml(__('wasted')) . ' (' .
+                    $escaper->escapeHtml(number_format($memoryUtilizationPct, 1)) . '% ' . $escaper->escapeHtml(__('utilization')) . ')' .
+                '</div>';
+                
+                // Display hit rate if available
+                if (isset($opcacheStatus['opcache_statistics']['hit_rate'])) {
+                    $hitRate = $opcacheStatus['opcache_statistics']['hit_rate'];
+                    echo '<div class="performance-result">' .
+                        $escaper->escapeHtml(__('Hit Rate:')) . ' ' .
+                        $escaper->escapeHtml(number_format($hitRate, 2)) . '%' .
+                    '</div>';
+                }
+                
+                // Display memory consumption setting
+                if ($memoryConsumption !== null) {
+                    echo '<div class="performance-result">' .
+                        $escaper->escapeHtml(__('Memory Allocation:')) . ' ' .
+                        $escaper->escapeHtml($memoryConsumption) . ' MB' .
+                    '</div>';
+                }
+                
+                // Display max accelerated files
+                if ($maxAcceleratedFiles !== null) {
+                    echo '<div class="performance-result">' .
+                        $escaper->escapeHtml(__('Max Accelerated Files:')) . ' ' .
+                        $escaper->escapeHtml(number_format($maxAcceleratedFiles)) .
+                    '</div>';
+                }
+                
+                // Get script cached count if available
+                if (isset($opcacheStatus['opcache_statistics']['num_cached_scripts'])) {
+                    $numCachedScripts = $opcacheStatus['opcache_statistics']['num_cached_scripts'];
+                    echo '<div class="performance-result">' .
+                        $escaper->escapeHtml(__('Cached Scripts:')) . ' ' .
+                        $escaper->escapeHtml(number_format($numCachedScripts)) .
+                    '</div>';
+                }
+                
+            } catch (\Exception $e) {
+                echo '<div class="performance-error">' .
+                    '<strong>' . $escaper->escapeHtml(__('Error')) . ':</strong> ' .
+                    $escaper->escapeHtml($e->getMessage()) .
+                '</div>';
+            }
+        } else {
+            echo '<div class="performance-error">' .
+                '<strong>' . $escaper->escapeHtml(__('Error')) . ':</strong> ' .
+                $escaper->escapeHtml(__('Zend OPcache extension is not loaded. OPcache is not working.')) .
+            '</div>';
+        }
+
+        // Check for Xdebug which impacts performance
+        if (extension_loaded('xdebug')) {
+            echo '<div class="performance-warning">' .
+                '<strong>' . $escaper->escapeHtml(__('Warning')) . ':</strong> ' .
+                $escaper->escapeHtml(__('Xdebug is enabled. This causes significant performance overhead. Disable Xdebug on production servers.')) .
+            '</div>';
+        }
+        ?>
+    </div>
+</div>
+
+</div> <!-- Close console-container -->
+
 		
-require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
+<?php
+try {
+    if (!class_exists(\Amnuts\Opcache\Service::class)) {
+        throw new \RuntimeException(
+            __('Amnuts\Opcache\Service class is not available. Make sure the amnuts/opcache-gui package is installed.')
+        );
+    }
+    
+    // Initialize the OPcache GUI service
+    $opcacheGui = (new \Amnuts\Opcache\Service())->handle();
+    
+    echo '<div class="opcache-dashboard">';
+	echo "<h2>OPcache GUI</h2>";
+    
+    // Include the OPcache GUI interface
+    require_once BP . '/vendor/amnuts/opcache-gui/index.php';
+    
+    echo '</div>';
+} catch (\Exception $e) {
+    echo '<div class="performance-error">' .
+        '<strong>' . $escaper->escapeHtml(__('Error loading OPcache GUI:')) . '</strong> ' .
+        $escaper->escapeHtml($e->getMessage()) .
+    '</div>';
+}
+?>
