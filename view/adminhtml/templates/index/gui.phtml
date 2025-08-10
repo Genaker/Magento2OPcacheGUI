@@ -218,67 +218,10 @@
 <?php
 echo '<div class="console-subtitle">[PERFORMANCE BENCHMARK]</div>';
 
-// Performance Test Functions
-function testCPUPerformance(){
-    $start = microtime(TRUE);
-    for ($a = 0; $a < 10000000; $a++) { $b = $a * $a; }
-    $end = microtime(TRUE);
-    return $end - $start;
-}
+// Get Performance Toolkit instance
+$toolkit = $block->getPerformanceToolkit();
 
-function testMemoryAllocation(){
-    $start = microtime(TRUE);
-    $memory_start = memory_get_usage();
-    $array = [];
-    for ($i = 0; $i < 100000; $i++) {
-        $array[] = str_repeat('x', 100);
-    }
-    $memory_end = memory_get_usage();
-    $end = microtime(TRUE);
-    unset($array);
-    return [
-        'time' => $end - $start,
-        'memory' => $memory_end - $memory_start
-    ];
-}
-
-function testFileOperations(){
-    $start = microtime(TRUE);
-    $temp_file = sys_get_temp_dir() . '/magento_perf_test.tmp';
-    
-    // Write test
-    file_put_contents($temp_file, str_repeat('Test data', 1000));
-    
-    // Read test
-    for ($i = 0; $i < 100; $i++) {
-        $content = file_get_contents($temp_file);
-    }
-    
-    // Cleanup
-    unlink($temp_file);
-    
-    $end = microtime(TRUE);
-    return $end - $start;
-}
-
-function testDatabaseOperations(){
-    $start = microtime(TRUE);
-    try {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-        $connection = $resource->getConnection();
-        
-        // Simple query test
-        for ($i = 0; $i < 10; $i++) {
-            $result = $connection->fetchAll("SELECT 1 as test");
-        }
-        
-        $end = microtime(TRUE);
-        return $end - $start;
-    } catch (\Exception $e) {
-        return 'ERROR: ' . $e->getMessage();
-    }
-}
+// All performance test functions are now in the PerformanceToolkit class
 
 function testMySQLLatency(){
     try {
@@ -288,7 +231,8 @@ function testMySQLLatency(){
         
         // Perform 10 latency tests
         $latencies = [];
-        for ($i = 0; $i < 10; $i++) {
+        $db_performance_iterations = $block->getDbPerformanceIterations();
+        for ($i = 0; $i < $db_performance_iterations; $i++) {
             $start = microtime(TRUE);
             $result = $connection->fetchAll("SELECT 1");
             $end = microtime(TRUE);
@@ -353,58 +297,138 @@ function testRedisLatency(){
                 return 'ERROR: Redis extension not available';
             }
         } else {
-            // Try default Redis connection
-            if (class_exists('Redis')) {
-                $redis = new \Redis();
-                if ($redis->connect('127.0.0.1', 6379, 1)) {
-                    // Perform 10 latency tests
-                    $latencies = [];
-                    for ($i = 0; $i < 10; $i++) {
-                        $start = microtime(TRUE);
-                        $redis->ping();
-                        $end = microtime(TRUE);
-                        $latencies[] = $end - $start;
-                    }
-                    $redis->close();
-                    
-                    // Calculate statistics
-                    sort($latencies);
-                    $stats = [
-                        'best' => min($latencies),
-                        'worst' => max($latencies),
-                        'avg' => array_sum($latencies) / count($latencies),
-                        'p95' => $latencies[floor(count($latencies) * 0.95)]
-                    ];
-                    
-                    return $stats;
-                } else {
-                    return 'NOTICE: Redis not configured or not running';
-                }
-            } else {
-                return 'NOTICE: Redis extension not installed';
-            }
+                return 'NOTICE: Redis configuration not found';
         }
     } catch (\Exception $e) {
         return 'ERROR: ' . $e->getMessage();
     }
 }
 
+function getMagentoBaseUrl() {
+    try {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $storeManager = $objectManager->get(\Magento\Store\Model\StoreManagerInterface::class);
+        return $storeManager->getStore()->getBaseUrl();
+    } catch (\Exception $e) {
+        return 'https://react-luma.cnxt.link/'; // Fallback URL
+    }
+}
+
+function testHTTPPerformance($url = null){
+    if ($url === null) {
+        $url = getMagentoBaseUrl() . 'customer/account/login/';
+    }
+    
+    $start = microtime(TRUE);
+    
+    // Initialize cURL
+    $ch = curl_init();
+    
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test');
+    
+    // Execute the request
+    $response = curl_exec($ch);
+    
+    // Get HTTP status and timing info
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    
+    curl_close($ch);
+    
+    $end = microtime(TRUE);
+    $totalTime = $end - $start;
+    
+    // Check for errors
+    if ($error) {
+        return 'ERROR: ' . $error;
+    }
+    
+    if ($httpCode !== 200) {
+        return 'ERROR: HTTP ' . $httpCode;
+    }
+    
+    return $totalTime;
+}
+
+function testHTTPPerformanceUncached($url = null){
+    if ($url === null) {
+        $url = getMagentoBaseUrl() . 'customer/account/login/';
+    }
+    
+    // Add timestamp parameter to bypass cache
+    $separator = (strpos($url, '?') !== false) ? '&' : '?';
+    $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);
+    
+    $start = microtime(TRUE);
+    
+    // Initialize cURL
+    $ch = curl_init();
+    
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_URL, $uncachedUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test (Uncached)');
+    
+    // Add cache-busting headers
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Cache-Control: no-cache, no-store, must-revalidate',
+        'Pragma: no-cache',
+        'Expires: 0'
+    ]);
+    
+    // Execute the request
+    $response = curl_exec($ch);
+    
+    // Get HTTP status and timing info
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    
+    curl_close($ch);
+    
+    $end = microtime(TRUE);
+    $totalTime = $end - $start;
+    
+    // Check for errors
+    if ($error) {
+        return 'ERROR: ' . $error;
+    }
+    
+    if ($httpCode !== 200) {
+        return 'ERROR: HTTP ' . $httpCode;
+    }
+    
+    return $totalTime;
+}
+
 // Run Performance Tests
-echo '<div class="console-prompt">Running CPU benchmark...</div>';
-$cpu_time = testCPUPerformance();
-echo "<div class='test-result'>CPU Performance: " . number_format($cpu_time, 4) . " seconds</div>";
+$performance_iterations = $block->getPerformanceIterations();
+
+echo '<div class="console-prompt">Running CPU benchmark (' . $performance_iterations . ' iterations)...</div>';
+$cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $performance_iterations, true, 'CPU Test');
+echo "<div class='test-result'><strong>Final CPU Performance: Best: " . number_format($cpu_stats['best'], 2) . "ms | Avg: " . number_format($cpu_stats['avg'], 2) . "ms | 95th: " . number_format($cpu_stats['percentile95'], 2) . "ms | Worst: " . number_format($cpu_stats['worst'], 2) . "ms</strong></div>";
 
 echo '<div class="console-prompt">Testing memory allocation...</div>';
-$memory_test = testMemoryAllocation();
+$memory_test = $toolkit->testMemoryAllocation();
 echo "<div class='test-result'>Memory Test: " . number_format($memory_test['time'], 4) . " seconds, " . 
      number_format($memory_test['memory'] / 1024 / 1024, 2) . " MB allocated</div>";
 
 echo '<div class="console-prompt">Testing file I/O operations...</div>';
-$file_time = testFileOperations();
+$file_time = $toolkit->testFileOperations();
 echo "<div class='test-result'>File I/O Performance: " . number_format($file_time, 4) . " seconds</div>";
 
 echo '<div class="console-prompt">Testing database operations...</div>';
-$db_time = testDatabaseOperations();
+$db_time = $toolkit->testDatabaseOperations($block->getDbPerformanceIterations());
 if (is_string($db_time)) {
     echo "<div class='test-error'>Database Test: $db_time</div>";
 } else {
@@ -412,7 +436,7 @@ if (is_string($db_time)) {
 }
 
 echo '<div class="console-prompt">Testing MySQL latency (10 requests)...</div>';
-$mysql_latency = testMySQLLatency();
+$mysql_latency = $toolkit->testMySQLLatency();
 if (is_string($mysql_latency)) {
     echo "<div class='test-error'>MySQL Latency Test: $mysql_latency</div>";
 } else {
@@ -437,7 +461,7 @@ if (is_string($mysql_latency)) {
 }
 
 echo '<div class="console-prompt">Testing Redis performance (10 requests)...</div>';
-$redis_latency = testRedisLatency();
+$redis_latency = $toolkit->testRedisLatency();
 if (is_string($redis_latency)) {
     echo "<div class='test-error'>Redis Test: $redis_latency</div>";
 } else {
@@ -457,6 +481,334 @@ if (is_string($redis_latency)) {
     
     echo "<div class='{$status_class}'>Redis Latency ({$status_text}): Best: " . number_format($best_ms, 2) . "ms | Avg: " . number_format($avg_ms, 2) . "ms | 95th: " . number_format($p95_ms, 2) . "ms | Worst: " . number_format($worst_ms, 2) . "ms</div>";
 }
+
+echo '<div class="console-subtitle">[HTTP PERFORMANCE]</div>';
+
+// Get base URL for testing
+$baseUrl = $toolkit->getMagentoBaseUrl();
+echo '<div class="console-prompt">Base URL: ' . $baseUrl . '</div>';
+
+// Test main page
+echo '<div class="console-prompt">Testing HTTP performance (5 iterations) - Main page...</div>';
+$main_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Main Page', [$baseUrl]);
+if (is_string($main_page_stats)) {
+    echo "<div class='test-error'>Main Page Performance Test: $main_page_stats</div>";
+} else {
+    // Determine status based on average response time
+    if ($main_page_stats['avg'] > 2000) {
+        $status_class = 'test-error';
+        $status_text = 'SLOW - check network/server';
+    } elseif ($main_page_stats['avg'] > 1000) {
+        $status_class = 'performance-warning';
+        $status_text = 'MODERATE';
+    } else {
+        $status_class = 'test-result';
+        $status_text = 'GOOD';
+    }
+    
+    echo "<div class='{$status_class}'><strong>Final Main Page Performance ({$status_text}): Best: " . number_format($main_page_stats['best'], 2) . "ms | Avg: " . number_format($main_page_stats['avg'], 2) . "ms | 95th: " . number_format($main_page_stats['percentile95'], 2) . "ms | Worst: " . number_format($main_page_stats['worst'], 2) . "ms</strong></div>";
+}
+
+// Test login page
+echo '<div class="console-prompt">Testing HTTP performance (5 iterations) - Login page...</div>';
+$login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
+if (is_string($login_page_stats)) {
+    echo "<div class='test-error'>Login Page Performance Test: $login_page_stats</div>";
+} else {
+    // Determine status based on average response time
+    if ($login_page_stats['avg'] > 2000) {
+        $status_class = 'test-error';
+        $status_text = 'SLOW - check network/server';
+    } elseif ($login_page_stats['avg'] > 1000) {
+        $status_class = 'performance-warning';
+        $status_text = 'MODERATE';
+    } else {
+        $status_class = 'test-result';
+        $status_text = 'GOOD';
+    }
+    
+    echo "<div class='{$status_class}'><strong>Final Login Page Performance ({$status_text}): Best: " . number_format($login_page_stats['best'], 2) . "ms | Avg: " . number_format($login_page_stats['avg'], 2) . "ms | 95th: " . number_format($login_page_stats['percentile95'], 2) . "ms | Worst: " . number_format($login_page_stats['worst'], 2) . "ms</strong></div>";
+}
+
+// Test random product page (cached)
+$http_performance_iterations = $block->getHttpPerformanceIterations();
+echo '<div class="console-prompt">Testing HTTP performance (' . $http_performance_iterations . ' iterations) - Random product page (cached)...</div>';
+try {
+    $randomProductUrl = $block->getRandomProductUrl();
+    if ($randomProductUrl) {
+        echo '<div class="console-prompt">Random Product URL: ' . $randomProductUrl . '</div>';
+        $random_product_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Product (Cached)', [$randomProductUrl]);
+        if (is_string($random_product_stats)) {
+            echo "<div class='test-error'>Random Product Performance Test: $random_product_stats</div>";
+        } else {
+            // Determine status based on average response time
+            if ($random_product_stats['avg'] > 2500) {
+                $status_class = 'test-error';
+                $status_text = 'SLOW - check server/product performance';
+            } elseif ($random_product_stats['avg'] > 1200) {
+                $status_class = 'performance-warning';
+                $status_text = 'MODERATE';
+            } else {
+                $status_class = 'test-result';
+                $status_text = 'GOOD';
+            }
+            
+            echo "<div class='{$status_class}'><strong>Final Random Product Performance ({$status_text}): Best: " . number_format($random_product_stats['best'], 2) . "ms | Avg: " . number_format($random_product_stats['avg'], 2) . "ms | 95th: " . number_format($random_product_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_product_stats['worst'], 2) . "ms</strong></div>";
+        }
+    } else {
+        echo "<div class='performance-warning'>No random product available for testing - check if products exist and are enabled</div>";
+        $random_product_stats = 'No products available';
+    }
+} catch (\Exception $e) {
+    echo "<div class='test-error'>Random Product Test Error: " . $e->getMessage() . "</div>";
+    $random_product_stats = 'Error: ' . $e->getMessage();
+}
+
+// Test random category page (cached)
+echo '<div class="console-prompt">Testing HTTP performance (' . $http_performance_iterations . ' iterations) - Random category page (cached)...</div>';
+try {
+    $randomCategoryUrl = $block->getRandomCategoryUrl();
+    if ($randomCategoryUrl) {
+        echo '<div class="console-prompt">Random Category URL: ' . $randomCategoryUrl . '</div>';
+        $random_category_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Category (Cached)', [$randomCategoryUrl]);
+        if (is_string($random_category_stats)) {
+            echo "<div class='test-error'>Random Category Performance Test: $random_category_stats</div>";
+        } else {
+            // Determine status based on average response time
+            if ($random_category_stats['avg'] > 2000) {
+                $status_class = 'test-error';
+                $status_text = 'SLOW - check server/category performance';
+            } elseif ($random_category_stats['avg'] > 1000) {
+                $status_class = 'performance-warning';
+                $status_text = 'MODERATE';
+            } else {
+                $status_class = 'test-result';
+                $status_text = 'GOOD';
+            }
+            
+            echo "<div class='{$status_class}'><strong>Final Random Category Performance ({$status_text}): Best: " . number_format($random_category_stats['best'], 2) . "ms | Avg: " . number_format($random_category_stats['avg'], 2) . "ms | 95th: " . number_format($random_category_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_category_stats['worst'], 2) . "ms</strong></div>";
+        }
+    } else {
+        echo "<div class='performance-warning'>No random category available for testing - check if categories exist and are active</div>";
+        $random_category_stats = 'No categories available';
+    }
+} catch (\Exception $e) {
+    echo "<div class='test-error'>Random Category Test Error: " . $e->getMessage() . "</div>";
+    $random_category_stats = 'Error: ' . $e->getMessage();
+}
+
+echo '<div class="console-subtitle">[UNCACHED HTTP PERFORMANCE]</div>';
+
+// Test main page (uncached)
+echo '<div class="console-prompt">Testing UNCACHED HTTP performance (' . $http_performance_iterations . ' iterations) - Main page with timestamp parameter...</div>';
+$main_page_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Main Page (Uncached)', [$baseUrl]);
+if (is_string($main_page_uncached_stats)) {
+    echo "<div class='test-error'>Main Page Uncached Performance Test: $main_page_uncached_stats</div>";
+} else {
+    // Determine status based on average response time (uncached should be slower)
+    if ($main_page_uncached_stats['avg'] > 800) {
+        $status_class = 'test-error';
+        $status_text = 'SLOW - check server performance';
+    } elseif ($main_page_uncached_stats['avg'] > 600) {
+        $status_class = 'performance-warning';
+        $status_text = 'MODERATE';
+    } else {
+        $status_class = 'test-result';
+        $status_text = 'GOOD';
+    }
+    
+    echo "<div class='{$status_class}'><strong>Final Main Page Uncached Performance ({$status_text}): Best: " . number_format($main_page_uncached_stats['best'], 2) . "ms | Avg: " . number_format($main_page_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($main_page_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($main_page_uncached_stats['worst'], 2) . "ms</strong></div>";
+}
+
+// Test random product page (uncached)
+echo '<div class="console-prompt">Testing UNCACHED HTTP performance (' . $http_performance_iterations . ' iterations) - Random product page with timestamp parameter...</div>';
+try {
+    $randomProductUrl = $block->getRandomProductUrl();
+    if ($randomProductUrl) {
+        echo '<div class="console-prompt">Random Product URL: ' . $randomProductUrl . '</div>';
+        $random_product_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Random Product (Uncached)', [$randomProductUrl]);
+        if (is_string($random_product_uncached_stats)) {
+            echo "<div class='test-error'>Random Product Uncached Performance Test: $random_product_uncached_stats</div>";
+        } else {
+            // Determine status based on average response time (product pages are typically slower)
+            if ($random_product_uncached_stats['avg'] > 800) {
+                $status_class = 'test-error';
+                $status_text = 'SLOW - check server/product performance';
+            } elseif ($random_product_uncached_stats['avg'] > 600) {
+                $status_class = 'performance-warning';
+                $status_text = 'MODERATE';
+            } else {
+                $status_class = 'test-result';
+                $status_text = 'GOOD';
+            }
+            
+            echo "<div class='{$status_class}'><strong>Final Random Product Uncached Performance ({$status_text}): Best: " . number_format($random_product_uncached_stats['best'], 2) . "ms | Avg: " . number_format($random_product_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($random_product_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_product_uncached_stats['worst'], 2) . "ms</strong></div>";
+        }
+    } else {
+        echo "<div class='performance-warning'>No random product available for testing - check if products exist and are enabled</div>";
+        $random_product_uncached_stats = 'No products available';
+    }
+} catch (\Exception $e) {
+    echo "<div class='test-error'>Random Product Test Error: " . $e->getMessage() . "</div>";
+    $random_product_uncached_stats = 'Error: ' . $e->getMessage();
+}
+
+// Test random category page (uncached)
+echo '<div class="console-prompt">Testing UNCACHED HTTP performance (' . $http_performance_iterations . ' iterations) - Random category page with timestamp parameter...</div>';
+try {
+    $randomCategoryUrl = $block->getRandomCategoryUrl();
+    if ($randomCategoryUrl) {
+        echo '<div class="console-prompt">Random Category URL: ' . $randomCategoryUrl . '</div>';
+        $random_category_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Random Category (Uncached)', [$randomCategoryUrl]);
+        if (is_string($random_category_uncached_stats)) {
+            echo "<div class='test-error'>Random Category Uncached Performance Test: $random_category_uncached_stats</div>";
+        } else {
+            // Determine status based on average response time (category pages can vary greatly)
+            if ($random_category_uncached_stats['avg'] > 1000) {
+                $status_class = 'test-error';
+                $status_text = 'SLOW - check server/category performance';
+            } elseif ($random_category_uncached_stats['avg'] > 800) {
+                $status_class = 'performance-warning';
+                $status_text = 'MODERATE';
+            } else {
+                $status_class = 'test-result';
+                $status_text = 'GOOD';
+            }
+            
+            echo "<div class='{$status_class}'><strong>Final Random Category Uncached Performance ({$status_text}): Best: " . number_format($random_category_uncached_stats['best'], 2) . "ms | Avg: " . number_format($random_category_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($random_category_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_category_uncached_stats['worst'], 2) . "ms</strong></div>";
+        }
+    } else {
+        echo "<div class='performance-warning'>No random category available for testing - check if categories exist and are active</div>";
+        $random_category_uncached_stats = 'No categories available';
+    }
+} catch (\Exception $e) {
+    echo "<div class='test-error'>Random Category Test Error: " . $e->getMessage() . "</div>";
+    $random_category_uncached_stats = 'Error: ' . $e->getMessage();
+}
+
+echo '<div class="console-subtitle">[CACHE PERFORMANCE COMPARISON]</div>';
+
+// Compare cached vs uncached performance for main page
+if (!is_string($main_page_stats) && !is_string($main_page_uncached_stats)) {
+    $main_cache_benefit_percent = (($main_page_uncached_stats['avg'] - $main_page_stats['avg']) / $main_page_uncached_stats['avg']) * 100;
+    $main_cache_benefit_ms = $main_page_uncached_stats['avg'] - $main_page_stats['avg'];
+    
+    if ($main_cache_benefit_percent > 50) {
+        $cache_status_class = 'test-result';
+        $cache_status_text = 'EXCELLENT cache benefit';
+    } elseif ($main_cache_benefit_percent > 25) {
+        $cache_status_class = 'performance-result';
+        $cache_status_text = 'GOOD cache benefit';
+    } elseif ($main_cache_benefit_percent > 10) {
+        $cache_status_class = 'performance-warning';
+        $cache_status_text = 'MODERATE cache benefit';
+    } else {
+        $cache_status_class = 'test-error';
+        $cache_status_text = 'LOW cache benefit - check cache configuration';
+    }
+    
+    echo "<div class='{$cache_status_class}'><strong>Main Page Cache Impact ({$cache_status_text}): Cached: " . number_format($main_page_stats['avg'], 2) . "ms | Uncached: " . number_format($main_page_uncached_stats['avg'], 2) . "ms | Cache saves: " . number_format($main_cache_benefit_ms, 2) . "ms (" . number_format($main_cache_benefit_percent, 1) . "%)</strong></div>";
+}
+
+// Compare cached vs uncached performance for random product
+if (!is_string($random_product_stats) && !is_string($random_product_uncached_stats)) {
+    $product_cache_benefit_percent = (($random_product_uncached_stats['avg'] - $random_product_stats['avg']) / $random_product_uncached_stats['avg']) * 100;
+    $product_cache_benefit_ms = $random_product_uncached_stats['avg'] - $random_product_stats['avg'];
+    
+    if ($product_cache_benefit_percent > 50) {
+        $cache_status_class = 'test-result';
+        $cache_status_text = 'EXCELLENT cache benefit';
+    } elseif ($product_cache_benefit_percent > 25) {
+        $cache_status_class = 'performance-result';
+        $cache_status_text = 'GOOD cache benefit';
+    } elseif ($product_cache_benefit_percent > 10) {
+        $cache_status_class = 'performance-warning';
+        $cache_status_text = 'MODERATE cache benefit';
+    } else {
+        $cache_status_class = 'test-error';
+        $cache_status_text = 'LOW cache benefit - check cache configuration';
+    }
+    
+    echo "<div class='{$cache_status_class}'><strong>Random Product Cache Impact ({$cache_status_text}): Cached: " . number_format($random_product_stats['avg'], 2) . "ms | Uncached: " . number_format($random_product_uncached_stats['avg'], 2) . "ms | Cache saves: " . number_format($product_cache_benefit_ms, 2) . "ms (" . number_format($product_cache_benefit_percent, 1) . "%)</strong></div>";
+}
+
+// Compare cached vs uncached performance for random category
+if (!is_string($random_category_stats) && !is_string($random_category_uncached_stats)) {
+    $category_cache_benefit_percent = (($random_category_uncached_stats['avg'] - $random_category_stats['avg']) / $random_category_uncached_stats['avg']) * 100;
+    $category_cache_benefit_ms = $random_category_uncached_stats['avg'] - $random_category_stats['avg'];
+    
+    if ($category_cache_benefit_percent > 50) {
+        $cache_status_class = 'test-result';
+        $cache_status_text = 'EXCELLENT cache benefit';
+    } elseif ($category_cache_benefit_percent > 25) {
+        $cache_status_class = 'performance-result';
+        $cache_status_text = 'GOOD cache benefit';
+    } elseif ($category_cache_benefit_percent > 10) {
+        $cache_status_class = 'performance-warning';
+        $cache_status_text = 'MODERATE cache benefit';
+    } else {
+        $cache_status_class = 'test-error';
+        $cache_status_text = 'LOW cache benefit - check cache configuration';
+    }
+    
+    echo "<div class='{$cache_status_class}'><strong>Random Category Cache Impact ({$cache_status_text}): Cached: " . number_format($random_category_stats['avg'], 2) . "ms | Uncached: " . number_format($random_category_uncached_stats['avg'], 2) . "ms | Cache saves: " . number_format($category_cache_benefit_ms, 2) . "ms (" . number_format($category_cache_benefit_percent, 1) . "%)</strong></div>";
+}
+
+// Overall cache effectiveness summary
+$total_tests = 0;
+$total_cache_benefit = 0;
+$cache_working_tests = 0;
+
+if (!is_string($main_page_stats) && !is_string($main_page_uncached_stats)) {
+    $total_tests++;
+    $total_cache_benefit += $main_cache_benefit_percent;
+    if ($main_cache_benefit_percent > 10) $cache_working_tests++;
+}
+
+if (!is_string($random_product_stats) && !is_string($random_product_uncached_stats)) {
+    $total_tests++;
+    $total_cache_benefit += $product_cache_benefit_percent;
+    if ($product_cache_benefit_percent > 10) $cache_working_tests++;
+}
+
+if (!is_string($random_category_stats) && !is_string($random_category_uncached_stats)) {
+    $total_tests++;
+    $total_cache_benefit += $category_cache_benefit_percent;
+    if ($category_cache_benefit_percent > 10) $cache_working_tests++;
+}
+
+if ($total_tests > 0) {
+    $avg_cache_benefit = $total_cache_benefit / $total_tests;
+    $cache_effectiveness = ($cache_working_tests / $total_tests) * 100;
+    
+    if ($avg_cache_benefit > 40 && $cache_effectiveness > 80) {
+        $overall_status_class = 'test-result';
+        $overall_status_text = 'EXCELLENT overall cache performance';
+    } elseif ($avg_cache_benefit > 25 && $cache_effectiveness > 60) {
+        $overall_status_class = 'performance-result';
+        $overall_status_text = 'GOOD overall cache performance';
+    } elseif ($avg_cache_benefit > 15 && $cache_effectiveness > 40) {
+        $overall_status_class = 'performance-warning';
+        $overall_status_text = 'MODERATE overall cache performance';
+    } else {
+        $overall_status_class = 'test-error';
+        $overall_status_text = 'POOR overall cache performance - review cache configuration';
+    }
+    
+    echo "<div class='{$overall_status_class}'><strong>Overall Cache Effectiveness ({$overall_status_text}): Average benefit: " . number_format($avg_cache_benefit, 1) . "%</strong></div>";
+}
+
+// Cache Performance Warning
+echo '<div class="performance-warning">';
+echo '<strong>⚠ IMPORTANT CACHE LIMITATIONS:</strong><br/>';
+echo '• Full Page Cache (FPC) primarily benefits <strong>guest visitors</strong> only<br/>';
+echo '• Logged-in customers typically <strong>miss FPC</strong> and receive uncached content<br/>';
+echo '• Cache can be <strong>invalidated at any time</strong> due to content updates, promotions, or configuration changes<br/>';
+echo '• Cache performance benefits are <strong>not guaranteed</strong> for your actual application traffic<br/>';
+echo '• These tests show <strong>best-case scenarios</strong> - real-world performance may vary significantly<br/>';
+echo '• <strong>Search requests</strong> and <strong>category filters</strong> are almost never cached due to their dynamic nature<br/>';
+echo '• Focus on optimizing <strong>uncached performance</strong> for sustainable long-term improvements';
+echo '</div>';
 
 echo '<div class="console-subtitle">[OPCACHE STATUS]</div>';
 
@@ -625,7 +977,7 @@ function checkPHPConfiguration() {
     $performance_extensions = [
         'Zend OPcache' => 'PHP bytecode caching',
         'redis' => 'Redis cache support',
-        'memcached' => 'Memcached support',
+        'apcu' => 'APCu support',
         'imagick' => 'Advanced image processing'
     ];
     

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright ©  All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Dependency injection configuration for OPcache GUI Block -->
+    <type name="Genaker\Opcache\Block\Adminhtml\Index\Gui">
+        <arguments>
+            <argument name="config" xsi:type="array">
+                <!-- Performance Testing Configuration -->
+                <item name="performance_iterations" xsi:type="number">3</item>
+                <item name="http_performance_iterations" xsi:type="number">3</item>
+                <item name="db_performance_iterations" xsi:type="number">3</item>
+                <item name="collection_page_size" xsi:type="number">100</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

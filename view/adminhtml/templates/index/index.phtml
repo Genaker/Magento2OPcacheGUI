@@ -1,12 +1,142 @@
+<style>
+.opcache-spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 60vh;
+    flex-direction: column;
+    background: #000000;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+}
+
+.opcache-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #333333;
+    border-top: 4px solid #00ff00;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.opcache-loading-text {
+    color: #00ffff;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.opcache-loading-subtext {
+    color: #ffff00;
+    font-size: 12px;
+    text-align: center;
+    max-width: 300px;
+}
+
+.opcache-iframe-container {
+    display: none;
+    height: 100%;
+    width: 100%;
+}
+</style>
+
 <script>
-  function resizeIframe(obj) {
-    obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+  // Array of performance test steps
+  const performanceSteps = [
+    "Initializing Performance Benchmark...",
+    "Testing CPU Performance...",
+    "Analyzing Memory Allocation...",
+    "Testing File Operations...",
+    "Checking Database Latency...",
+    "Testing HTTP Performance...",
+    "Running Uncached HTTP Tests...",
+    "Comparing Cache Performance...",
+    "Analyzing OPcache Status...",
+    "Checking PHP Configuration...",
+    "Running Security Analysis...",
+    "Finalizing Results..."
+  ];
+  
+  let currentStepIndex = 0;
+  let stepInterval;
+  
+  function updateLoadingStep() {
+    const stepElement = document.getElementById('opcache-loading-step');
+    if (stepElement) {
+      stepElement.textContent = performanceSteps[currentStepIndex];
+      currentStepIndex = (currentStepIndex + 1) % performanceSteps.length;
+    }
   }
+  
+  function resizeIframe(obj) {
+    try {
+      obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+    } catch(e) {
+      // Fallback if cross-origin issues
+      obj.style.height = '800px';
+    }
+    
+    // Hide spinner and show iframe when loaded
+    clearInterval(stepInterval);
+    document.getElementById('opcache-spinner').style.display = 'none';
+    document.getElementById('opcache-iframe-container').style.display = 'block';
+    
+    console.log('Iframe loaded successfully');
+  }
+  
+  // Show spinner initially and start step rotation
+  window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('opcache-spinner').style.display = 'flex';
+    updateLoadingStep(); // Set initial step
+    stepInterval = setInterval(updateLoadingStep, 600); // Rotate every 1.5 seconds
+    
+    // Add event listener to iframe for additional debugging
+    const iframe = document.querySelector('#opcache-iframe-container iframe');
+    if (iframe) {
+      iframe.addEventListener('load', function() {
+        console.log('Iframe load event fired');
+        resizeIframe(this);
+      });
+      
+      iframe.addEventListener('error', function() {
+        console.error('Iframe failed to load:', this.src);
+      });
+    }
+    
+    // Fallback timeout in case iframe never loads
+    setTimeout(function() {
+      const iframe = document.querySelector('#opcache-iframe-container iframe');
+      if (iframe && document.getElementById('opcache-spinner').style.display !== 'none') {
+        console.log('Iframe timeout reached, forcing show');
+        clearInterval(stepInterval);
+        document.getElementById('opcache-spinner').style.display = 'none';
+        document.getElementById('opcache-iframe-container').style.display = 'block';
+      }
+    }, 10000); // 10 second timeout
+  });
 </script>
 
 <?php
 
 echo "<h1> PHP Op-Cache GUI </h1>";
-//require_once __DIR__ . '/../../../../vendor/amnuts/opcache-gui/index.php';
 
-echo "<iframe src='" . $block->getGuiUrl() . "' title='react' style='height: 100%; width: 100%;' frameborder='0'  scrolling='no' onload='resizeIframe(this)'>";
+// Loading spinner
+echo '<div id="opcache-spinner" class="opcache-spinner-container">';
+echo '  <div class="opcache-spinner"></div>';
+echo '  <div class="opcache-loading-text">Loading Magento Performance Tool...</div>';
+echo '  <div id="opcache-loading-step" class="opcache-loading-subtext">Initializing performance benchmarks and system diagnostics</div>';
+echo '</div>';
+
+// Iframe container (hidden initially)
+echo '<div id="opcache-iframe-container" class="opcache-iframe-container">';
+echo "<iframe src='" . $block->getGuiUrl() . "' title='Magento Performance Tool' style='height: 100%; width: 100%;' frameborder='0' scrolling='no' onload='resizeIframe(this)' onerror='console.error(\"Iframe error:\", this.src)'></iframe>";
+echo '</div>';
+
+// Debug: Output the URL for troubleshooting
+echo '<script>console.log("Iframe URL:", "' . $block->getGuiUrl() . '");</script>';
+?>
