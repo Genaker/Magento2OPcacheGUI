@@ -4,6 +4,10 @@ Advanced Magento 2 Performance Monitoring & OPcache Control GUI with comprehensi
 
 ![Magento 2 Opcache GUI](https://github.com/Genaker/Magento2OPcacheGUI/raw/main/Magento-Opcache-Gui.jpg)
 
+# Magento Server Performance Toolkit GUI
+
+![opcacheGui](https://github.com/user-attachments/assets/dbe40aea-cf95-43ed-be34-a3a6b451bf08)
+
 ## Key Features
 
 ### **Performance Benchmarking Suite**
