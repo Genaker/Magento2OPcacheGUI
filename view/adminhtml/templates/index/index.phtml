@@ -1,3 +1,11 @@
+<?php
+// Delete opcachegui cookies
+if (isset($_COOKIE['opcachegui'])) {
+    setcookie('opcachegui', '', time() - 3600, '/');
+    unset($_COOKIE['opcachegui']);
+}
+?>
+
 <style>
 .opcache-spinner-container {
     display: flex;
@@ -123,7 +131,7 @@
 
 <?php
 
-echo "<h1> PHP Op-Cache GUI </h1>";
+echo "<h1> Magento Server PHP Op-Cache and Performance Tuning GUI </h1>";
 
 // Loading spinner
 echo '<div id="opcache-spinner" class="opcache-spinner-container">';
