@@ -254,29 +254,15 @@ class PerformaceToolkit
     }
 
     /**
-     * Get Magento base URL
-     *
-     * @return string
-     */
-    public function getMagentoBaseUrl(): string
-    {
-        try {
-            return $this->storeManager->getStore()->getBaseUrl();
-        } catch (\Exception $e) {
-            return 'https://react-luma.cnxt.link/'; // Fallback URL
-        }
-    }
-
-    /**
      * Test HTTP performance
      *
      * @param string|null $url
      * @return float|string
      */
-    public function testHTTPPerformance(?string $url = null)
+    public function testHTTPPerformance(string $url)
     {
         if ($url === null) {
-            $url = $this->getMagentoBaseUrl() . 'customer/account/login/';
+            throw new \Exception('URL is required');
         }
         
         $start = microtime(TRUE);
@@ -323,12 +309,8 @@ class PerformaceToolkit
      * @param string|null $url
      * @return float|string
      */
-    public function testHTTPPerformanceUncached(?string $url = null)
-    {
-        if ($url === null) {
-            $url = $this->getMagentoBaseUrl() . 'customer/account/login/';
-        }
-        
+    public function testHTTPPerformanceUncached(string $url)
+    {        
         // Add timestamp parameter to bypass cache
         $separator = (strpos($url, '?') !== false) ? '&' : '?';
         $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);

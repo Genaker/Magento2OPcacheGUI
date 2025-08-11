@@ -206,210 +206,92 @@
         display: none;
     }
 
+    .collapsible-wrapper {
+        background: #000000;
+        border: 1px solid #333333;
+        margin: 10px 0;
+    }
+
+    .collapsible-header {
+        background: #001122;
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #333333;
+        color: #00ffff;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }
+
+    .collapsible-header:hover {
+        background: #002244;
+    }
+
+    .collapsible-toggle {
+        color: #00ff00;
+        font-size: 14px;
+        transition: transform 0.3s ease;
+    }
+
+    .collapsible-content {
+        transition: max-height 0.3s ease-out;
+        overflow: hidden;
+    }
+
+    .collapsible-content.collapsed {
+        max-height: 400px; /* Approximately 10 lines * 40px line height */
+    }
+
+    .collapsible-content.expanded {
+        max-height: none;
+    }
+
+    .collapsible-header.collapsed .collapsible-toggle {
+        transform: rotate(-90deg);
+    }
+
+    .fade-indicator {
+        position: relative;
+    }
+
+    .fade-indicator.collapsed::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: linear-gradient(transparent, #000000);
+        pointer-events: none;
+    }
+
+    .nav-tab.nav-tab-link-realtime {
+        display: none !important;
+    }
+
 </style>
 
-<div class="console-container">
-    <div class="console-header">
-        <div class="console-title">╔══════════════════════════════════════╗</div>
-        <div class="console-title">║&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PHP OPcache Monitoring Tool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║</div>
-        <div class="console-title">╚══════════════════════════════════════╝</div>
+<div class="collapsible-wrapper">
+    <div class="collapsible-header" onclick="toggleCollapsible()">
+        <span>Magento Server PHP OPcache & Performance Console</span>
+        <span class="collapsible-toggle">▼</span>
     </div>
+    <div class="collapsible-content expanded fade-indicator" id="console-content">
+        <div class="console-container">
+            <div class="console-header">
+                <div class="console-title">╔══════════════════════════════════════╗</div>
+                <div class="console-title">║&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PHP OPcache Monitoring Tool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║</div>
+                <div class="console-title">╚══════════════════════════════════════╝</div>
+            </div>
 
 <?php
 echo '<div class="console-subtitle">[PERFORMANCE BENCHMARK]</div>';
 
 // Get Performance Toolkit instance
 $toolkit = $block->getPerformanceToolkit();
-
-// All performance test functions are now in the PerformanceToolkit class
-
-function testMySQLLatency(){
-    try {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-        $connection = $resource->getConnection();
-        
-        // Perform 10 latency tests
-        $latencies = [];
-        $db_performance_iterations = $block->getDbPerformanceIterations();
-        for ($i = 0; $i < $db_performance_iterations; $i++) {
-            $start = microtime(TRUE);
-            $result = $connection->fetchAll("SELECT 1");
-            $end = microtime(TRUE);
-            $latencies[] = $end - $start;
-        }
-        
-        // Calculate statistics
-        sort($latencies);
-        $stats = [
-            'best' => min($latencies),
-            'worst' => max($latencies),
-            'avg' => array_sum($latencies) / count($latencies),
-            'p95' => $latencies[floor(count($latencies) * 0.95)]
-        ];
-        
-        return $stats;
-    } catch (\Exception $e) {
-        return 'ERROR: ' . $e->getMessage();
-    }
-}
-
-function testRedisLatency(){
-    try {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        
-        // Try to get Redis connection from Magento's cache configuration
-        $cacheConfig = $objectManager->get(\Magento\Framework\App\DeploymentConfig::class);
-        $cacheSettings = $cacheConfig->get('cache');
-        
-        if (isset($cacheSettings['frontend']['default']['backend_options']['server'])) {
-            // Redis is configured, test connection
-            if (class_exists('Redis')) {
-                $redis = new \Redis();
-                $host = $cacheSettings['frontend']['default']['backend_options']['server'] ?? '127.0.0.1';
-                $port = $cacheSettings['frontend']['default']['backend_options']['port'] ?? 6379;
-                
-                if ($redis->connect($host, $port, 1)) {
-                    // Perform 10 latency tests
-                    $latencies = [];
-                    for ($i = 0; $i < 10; $i++) {
-                        $start = microtime(TRUE);
-                        $redis->ping();
-                        $end = microtime(TRUE);
-                        $latencies[] = $end - $start;
-                    }
-                    $redis->close();
-                    
-                    // Calculate statistics
-                    sort($latencies);
-                    $stats = [
-                        'best' => min($latencies),
-                        'worst' => max($latencies),
-                        'avg' => array_sum($latencies) / count($latencies),
-                        'p95' => $latencies[floor(count($latencies) * 0.95)]
-                    ];
-                    
-                    return $stats;
-                } else {
-                    return 'ERROR: Cannot connect to Redis server';
-                }
-            } else {
-                return 'ERROR: Redis extension not available';
-            }
-        } else {
-                return 'NOTICE: Redis configuration not found';
-        }
-    } catch (\Exception $e) {
-        return 'ERROR: ' . $e->getMessage();
-    }
-}
-
-function getMagentoBaseUrl() {
-    try {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $storeManager = $objectManager->get(\Magento\Store\Model\StoreManagerInterface::class);
-        return $storeManager->getStore()->getBaseUrl();
-    } catch (\Exception $e) {
-        return 'https://react-luma.cnxt.link/'; // Fallback URL
-    }
-}
-
-function testHTTPPerformance($url = null){
-    if ($url === null) {
-        $url = getMagentoBaseUrl() . 'customer/account/login/';
-    }
-    
-    $start = microtime(TRUE);
-    
-    // Initialize cURL
-    $ch = curl_init();
-    
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test');
-    
-    // Execute the request
-    $response = curl_exec($ch);
-    
-    // Get HTTP status and timing info
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    
-    curl_close($ch);
-    
-    $end = microtime(TRUE);
-    $totalTime = $end - $start;
-    
-    // Check for errors
-    if ($error) {
-        return 'ERROR: ' . $error;
-    }
-    
-    if ($httpCode !== 200) {
-        return 'ERROR: HTTP ' . $httpCode;
-    }
-    
-    return $totalTime;
-}
-
-function testHTTPPerformanceUncached($url = null){
-    if ($url === null) {
-        $url = getMagentoBaseUrl() . 'customer/account/login/';
-    }
-    
-    // Add timestamp parameter to bypass cache
-    $separator = (strpos($url, '?') !== false) ? '&' : '?';
-    $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);
-    
-    $start = microtime(TRUE);
-    
-    // Initialize cURL
-    $ch = curl_init();
-    
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_URL, $uncachedUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test (Uncached)');
-    
-    // Add cache-busting headers
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Cache-Control: no-cache, no-store, must-revalidate',
-        'Pragma: no-cache',
-        'Expires: 0'
-    ]);
-    
-    // Execute the request
-    $response = curl_exec($ch);
-    
-    // Get HTTP status and timing info
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    
-    curl_close($ch);
-    
-    $end = microtime(TRUE);
-    $totalTime = $end - $start;
-    
-    // Check for errors
-    if ($error) {
-        return 'ERROR: ' . $error;
-    }
-    
-    if ($httpCode !== 200) {
-        return 'ERROR: HTTP ' . $httpCode;
-    }
-    
-    return $totalTime;
-}
 
 // Run Performance Tests
 $performance_iterations = $block->getPerformanceIterations();
@@ -485,7 +367,7 @@ if (is_string($redis_latency)) {
 echo '<div class="console-subtitle">[HTTP PERFORMANCE]</div>';
 
 // Get base URL for testing
-$baseUrl = $toolkit->getMagentoBaseUrl();
+$baseUrl = $block->getMagentoBaseUrl();
 echo '<div class="console-prompt">Base URL: ' . $baseUrl . '</div>';
 
 // Test main page
@@ -510,8 +392,8 @@ if (is_string($main_page_stats)) {
 }
 
 // Test login page
-echo '<div class="console-prompt">Testing HTTP performance (5 iterations) - Login page...</div>';
-$login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
+echo '<div class="console-prompt">Testing HTTP performance (2 iterations) - Login page...</div>';
+$login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 2, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
 if (is_string($login_page_stats)) {
     echo "<div class='test-error'>Login Page Performance Test: $login_page_stats</div>";
 } else {
@@ -983,9 +865,9 @@ function checkPHPConfiguration() {
     
     foreach ($performance_extensions as $ext => $desc) {
         if (extension_loaded($ext)) {
-            $checks[] = ['type' => 'success', 'msg' => "Performance extension {$ext}: AVAILABLE ({$desc})"];
+            $checks[] = ['type' => 'success', 'msg' => "PHP extension {$ext}: AVAILABLE ({$desc})"];
         } else {
-            $checks[] = ['type' => 'warning', 'msg' => "Performance extension {$ext}: NOT FOUND - {$desc}"];
+            $checks[] = ['type' => 'warning', 'msg' => "PHP extension {$ext}: NOT FOUND - {$desc}"];
         }
     }
     
@@ -1419,7 +1301,31 @@ $escaper = $objectManager->get(\Magento\Framework\Escaper::class);
     </div>
 </div>
 
-</div> <!-- Close console-container -->
+        </div> <!-- Close console-container -->
+    </div> <!-- Close collapsible-content -->
+</div> <!-- Close collapsible-wrapper -->
+
+<script>
+function toggleCollapsible() {
+    const content = document.getElementById('console-content');
+    const header = document.querySelector('.collapsible-header');
+    const toggle = document.querySelector('.collapsible-toggle');
+    
+    if (content.classList.contains('expanded')) {
+        // Collapse
+        content.classList.remove('expanded');
+        content.classList.add('collapsed');
+        header.classList.add('collapsed');
+        toggle.textContent = '▶';
+    } else {
+        // Expand
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+        header.classList.remove('collapsed');
+        toggle.textContent = '▼';
+    }
+}
+</script>
 
 		
 <?php

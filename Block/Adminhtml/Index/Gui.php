@@ -236,4 +236,14 @@ class Gui extends \Magento\Backend\Block\Template
         
         return $url;
     }
+
+    /**
+     * Get Magento base URL
+     *
+     * @return string
+     */
+    public function getMagentoBaseUrl(): string
+    {
+        return $this->storeManager->getStore()->getBaseUrl();
+    }
 }
