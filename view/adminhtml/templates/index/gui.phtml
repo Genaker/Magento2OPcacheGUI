@@ -185,6 +185,69 @@
         margin: 10px 0 5px 0;
     }
     
+    /* Filter Controls */
+    .filter-controls {
+        background: #111111;
+        border: 1px solid #333333;
+        padding: 10px;
+        margin: 10px 0 20px 0;
+        border-radius: 3px;
+    }
+    
+    .filter-controls h4 {
+        color: #00ffff;
+        margin: 0 0 10px 0;
+        font-size: 12px;
+    }
+    
+    .filter-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        background: #222222;
+        border: 1px solid #555555;
+        color: #00ff00;
+        padding: 5px 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: all 0.2s;
+    }
+    
+    .filter-btn:hover {
+        background: #333333;
+        border-color: #777777;
+    }
+    
+    .filter-btn.active {
+        background: #00ff00;
+        color: #000000;
+        border-color: #00ff00;
+    }
+    
+    .filter-btn.error-btn.active {
+        background: #ff4444;
+        color: #ffffff;
+        border-color: #ff4444;
+    }
+    
+    .filter-btn.warning-btn.active {
+        background: #ffaa00;
+        color: #000000;
+        border-color: #ffaa00;
+    }
+    
+
+    
+    /* Hidden filter items */
+    .filter-hidden {
+        display: none !important;
+    }
+    
     /* Scrollbar styling for webkit browsers */
     ::-webkit-scrollbar {
         width: 12px;
@@ -268,15 +331,11 @@
         pointer-events: none;
     }
 
-    .nav-tab.nav-tab-link-realtime {
-        display: none !important;
-    }
-
 </style>
 
 <div class="collapsible-wrapper">
     <div class="collapsible-header" onclick="toggleCollapsible()">
-        <span>Magento Server PHP OPcache & Performance Console</span>
+        <span>Magento PHP OPcache & Performance Console</span>
         <span class="collapsible-toggle">▼</span>
     </div>
     <div class="collapsible-content expanded fade-indicator" id="console-content">
@@ -285,6 +344,18 @@
                 <div class="console-title">╔══════════════════════════════════════╗</div>
                 <div class="console-title">║&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PHP OPcache Monitoring Tool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║</div>
                 <div class="console-title">╚══════════════════════════════════════╝</div>
+            </div>
+            
+            <!-- Filter Controls -->
+            <div class="filter-controls">
+                <h4>Filter Results:</h4>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterResults('all')">Show All</button>
+                    <button class="filter-btn error-btn" onclick="filterResults('error')">Errors Only</button>
+                    <button class="filter-btn warning-btn" onclick="filterResults('warning')">Warnings Only</button>
+                    <!--<button class="filter-btn" onclick="filterResults('errors-warnings')">Errors + Warnings</button>-->
+                    <button class="filter-btn" onclick="filterResults('issues')">Issues Only (Errors + Warnings)</button>
+                </div>
             </div>
 
 <?php
@@ -392,8 +463,8 @@ if (is_string($main_page_stats)) {
 }
 
 // Test login page
-echo '<div class="console-prompt">Testing HTTP performance (2 iterations) - Login page...</div>';
-$login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 2, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
+echo '<div class="console-prompt">Testing HTTP performance (5 iterations) - Login page...</div>';
+$login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
 if (is_string($login_page_stats)) {
     echo "<div class='test-error'>Login Page Performance Test: $login_page_stats</div>";
 } else {
@@ -694,461 +765,39 @@ echo '</div>';
 
 echo '<div class="console-subtitle">[OPCACHE STATUS]</div>';
 
-// OPcache Configuration Checks
-function checkOPcacheConfiguration() {
-    $checks = [];
-    
-    if (!extension_loaded('Zend OPcache')) {
-        $checks[] = ['type' => 'error', 'msg' => 'Zend OPcache extension is NOT LOADED - Critical performance impact'];
-        return $checks;
-    }
-    
-    $checks[] = ['type' => 'success', 'msg' => 'Zend OPcache extension: LOADED'];
-    
-    try {
-        $opcacheStatus = opcache_get_status(false);
-        $opcacheConfig = opcache_get_configuration();
-        
-        if (!is_array($opcacheStatus) || !is_array($opcacheConfig)) {
-            $checks[] = ['type' => 'error', 'msg' => 'OPcache status/configuration data unavailable'];
-            return $checks;
-        }
-        
-        // Check if OPcache is enabled
-        $enabled = $opcacheConfig['directives']['opcache.enable'] ?? false;
-        if (!$enabled) {
-            $checks[] = ['type' => 'error', 'msg' => 'OPcache is DISABLED - Enable opcache.enable in php.ini'];
-            return $checks;
-        }
-        $checks[] = ['type' => 'success', 'msg' => 'OPcache: ENABLED'];
-        
-        // Memory checks
-        $memoryUsed = $opcacheStatus['memory_usage']['used_memory'] ?? 0;
-        $memoryFree = $opcacheStatus['memory_usage']['free_memory'] ?? 0;
-        $memoryWasted = $opcacheStatus['memory_usage']['wasted_memory'] ?? 0;
-        $memoryTotal = $memoryUsed + $memoryFree + $memoryWasted;
-        $memoryConsumption = $opcacheConfig['directives']['opcache.memory_consumption'] ?? 0;
-        
-        // Check free memory (less than 32MB is concerning)
-        if ($memoryFree < 32 * 1024 * 1024) {
-            $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
-        } elseif ($memoryFree < 64 * 1024 * 1024) {
-            $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - LOW, consider increasing memory'];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - ADEQUATE'];
-        }
-        
-        // Check memory consumption setting
-        $memoryConsumption = $memoryConsumption / 1024 / 1024;
-        if ($memoryConsumption < 256) {
-            $checks[] = ['type' => 'warning', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB - Increase to 512MB+ for Magento'];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB'];
-        }
-        
-        // Check timestamp validation
-        $validateTimestamps = $opcacheConfig['directives']['opcache.validate_timestamps'] ?? null;
-        if ($validateTimestamps === true) {
-            $checks[] = ['type' => 'error', 'msg' => 'Timestamp validation: ENABLED - Disable opcache.validate_timestamps in production'];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => 'Timestamp validation: DISABLED - Optimal for production'];
-        }
-        
-        // Check max accelerated files
-        $maxFiles = $opcacheConfig['directives']['opcache.max_accelerated_files'] ?? 0;
-        if ($maxFiles < 100000) {
-            $checks[] = ['type' => 'warning', 'msg' => 'Max accelerated files: ' . number_format($maxFiles) . ' - Increase to 100,000+ for Magento'];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => 'Max accelerated files: ' . number_format($maxFiles)];
-        }
-        
-        // Check hit rate
-        if (isset($opcacheStatus['opcache_statistics']['hit_rate'])) {
-            $hitRate = $opcacheStatus['opcache_statistics']['hit_rate'];
-            if ($hitRate < 90) {
-                $checks[] = ['type' => 'warning', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - LOW, consider increasing memory or file limits'];
-            } elseif ($hitRate < 95) {
-                $checks[] = ['type' => 'warning', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - MODERATE'];
-            } else {
-                $checks[] = ['type' => 'success', 'msg' => 'Hit rate: ' . number_format($hitRate, 1) . '% - EXCELLENT'];
-            }
-        }
-        
-        // Check cached scripts
-        if (isset($opcacheStatus['opcache_statistics']['num_cached_scripts'])) {
-            $cachedScripts = $opcacheStatus['opcache_statistics']['num_cached_scripts'];
-            $checks[] = ['type' => 'info', 'msg' => 'Cached scripts: ' . number_format($cachedScripts)];
-        }
-        
-        // Check wasted memory percentage
-        if ($memoryTotal > 0) {
-            $wastedPercent = ($memoryWasted / $memoryTotal) * 100;
-            if ($wastedPercent > 10) {
-                $checks[] = ['type' => 'warning', 'msg' => 'Wasted memory: ' . number_format($wastedPercent, 1) . '% - HIGH, consider restarting or optimizing'];
-            } else {
-                $checks[] = ['type' => 'success', 'msg' => 'Wasted memory: ' . number_format($wastedPercent, 1) . '% - ACCEPTABLE'];
-            }
-        }
-        
-    } catch (\Exception $e) {
-        $checks[] = ['type' => 'error', 'msg' => 'OPcache check error: ' . $e->getMessage()];
-    }
-    
-    // Check for Xdebug
-    if (extension_loaded('xdebug')) {
-        $checks[] = ['type' => 'error', 'msg' => 'Xdebug: ENABLED - CRITICAL performance impact, disable on production'];
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => 'Xdebug: NOT DETECTED - Good for production'];
-    }
-    
-    return $checks;
-}
-
-displayChecks('OPcache Status:', checkOPcacheConfiguration());
+// Display OPcache configuration checks
+echo $block->displayChecks('OPcache Status:', $block->checkOPcacheConfiguration());
 
 echo '<div class="console-subtitle">[PHP CONFIGURATION ANALYSIS]</div>';
 
-// PHP Configuration Checks
-function checkPHPConfiguration() {
-    $checks = [];
-    
-    // Memory Limit
-    $memory_limit = ini_get('memory_limit');
-    $memory_bytes = str_replace(['K', 'M', 'G'], ['000', '000000', '000000000'], $memory_limit);
-    $memory_mb = (int)$memory_bytes / 1024 / 1024;
-    
-    if ($memory_mb < 2048) {
-        $checks[] = ['type' => 'error', 'msg' => "Memory limit too low: {$memory_limit}. Recommended: 2G+"];
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => "Memory limit: {$memory_limit}"];
-    }
-    
-    // Max Execution Time
-    $max_exec = ini_get('max_execution_time');
-    if ($max_exec > 0 && $max_exec < 1800) {
-        $checks[] = ['type' => 'warning', 'msg' => "Max execution time: {$max_exec}s. Consider 1800+ for deployments"];
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => "Max execution time: " . ($max_exec == 0 ? 'unlimited' : $max_exec . 's')];
-    }
-    
-    // File Upload Limits
-    $upload_max = ini_get('upload_max_filesize');
-    $post_max = ini_get('post_max_size');
-    $checks[] = ['type' => 'info', 'msg' => "Upload limits: {$upload_max} (upload), {$post_max} (post)"];
-    
-    // Required Extensions
-    $required_extensions = [
-        'curl' => 'cURL for API calls',
-        'gd' => 'GD for image processing', 
-        'intl' => 'Internationalization',
-        'mbstring' => 'Multibyte strings',
-        'soap' => 'SOAP web services',
-        'zip' => 'ZIP file handling',
-        'bcmath' => 'Precision mathematics'
-    ];
-    
-    foreach ($required_extensions as $ext => $desc) {
-        if (extension_loaded($ext)) {
-            $checks[] = ['type' => 'success', 'msg' => "Extension {$ext}: LOADED ({$desc})"];
-        } else {
-            $checks[] = ['type' => 'error', 'msg' => "Extension {$ext}: MISSING - {$desc}"];
-        }
-    }
-    
-    // Performance Extensions
-    $performance_extensions = [
-        'Zend OPcache' => 'PHP bytecode caching',
-        'redis' => 'Redis cache support',
-        'apcu' => 'APCu support',
-        'imagick' => 'Advanced image processing'
-    ];
-    
-    foreach ($performance_extensions as $ext => $desc) {
-        if (extension_loaded($ext)) {
-            $checks[] = ['type' => 'success', 'msg' => "PHP extension {$ext}: AVAILABLE ({$desc})"];
-        } else {
-            $checks[] = ['type' => 'warning', 'msg' => "PHP extension {$ext}: NOT FOUND - {$desc}"];
-        }
-    }
-    
-    return $checks;
-}
+// Display PHP configuration checks
+echo $block->displayChecks('PHP Configuration:', $block->checkPHPConfiguration());
+echo $block->displayChecks('Server Configuration:', $block->checkServerConfiguration());
 
-// Server Configuration Checks
-function checkServerConfiguration() {
-    $checks = [];
-    
-    // Server Software
-    $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
-    $checks[] = ['type' => 'info', 'msg' => "Server: {$server_software}"];
-    
-    // Document Root Permissions
-    $doc_root = $_SERVER['DOCUMENT_ROOT'] ?? '';
-    if ($doc_root && is_writable($doc_root)) {
-        $checks[] = ['type' => 'warning', 'msg' => "Document root is writable - security risk"];
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => "Document root permissions: OK"];
-    }
-    
-    // Disk Space Check
-    $free_space = disk_free_space('.');
-    $total_space = disk_total_space('.');
-    $free_gb = round($free_space / 1024 / 1024 / 1024, 2);
-    $total_gb = round($total_space / 1024 / 1024 / 1024, 2);
-    $usage_pct = round((($total_space - $free_space) / $total_space) * 100, 1);
-    
-    if ($usage_pct > 90) {
-        $checks[] = ['type' => 'error', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
-    } elseif ($usage_pct > 80) {
-        $checks[] = ['type' => 'warning', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => "Disk usage: {$usage_pct}% ({$free_gb}GB free of {$total_gb}GB)"];
-    }
-    
-    // Load Average (Linux only)
-    if (function_exists('sys_getloadavg')) {
-        $load = sys_getloadavg();
-        $load_str = implode(', ', array_map(function($l) { return number_format($l, 2); }, $load));
-        $checks[] = ['type' => 'info', 'msg' => "Load average: {$load_str}"];
-    }
-    
-    return $checks;
-}
+echo '<div class="console-subtitle">[COMPOSER OPTIMIZATION]</div>';
 
-// Magento Configuration Checks
-function checkMagentoConfiguration() {
-    $checks = [];
-    
-    try {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        
-        // Magento Version Check
-        $productMetadata = $objectManager->get(\Magento\Framework\App\ProductMetadataInterface::class);
-        $magentoVersion = $productMetadata->getVersion();
-        $magentoEdition = $productMetadata->getEdition();
-        
-        // Check if version is up to date (2.4.8+ is latest as of 2024)
-        if (version_compare($magentoVersion, '2.4.8', '<=')) {
-            if (version_compare($magentoVersion, '2.4.6', '<=')) { // 2.4.6 is the EOL version as of 2025
-                $checks[] = ['type' => 'error', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - OUTDATED, upgrade to 2.4.7+ for security patches and performance"];
-            } else {
-                $checks[] = ['type' => 'warning', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - Upgrade to 2.4.7+ for latest features and security"];
-            }
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => "Magento version: {$magentoEdition} {$magentoVersion} - CURRENT"];
-        }
-        
-        // Deployment Mode
-        $state = $objectManager->get(\Magento\Framework\App\State::class);
-        $mode = $state->getMode();
-        
-        if ($mode === 'production') {
-            $checks[] = ['type' => 'success', 'msg' => "Deployment mode: PRODUCTION"];
-        } elseif ($mode === 'developer') {
-            $checks[] = ['type' => 'warning', 'msg' => "Deployment mode: DEVELOPER (not for production)"];
-        } else {
-            $checks[] = ['type' => 'warning', 'msg' => "Deployment mode: {$mode}"];
-        }
-        
-        // Cache Status
-        $cacheManager = $objectManager->get(\Magento\Framework\App\Cache\Manager::class);
-        $cacheStatus = $cacheManager->getStatus();
-        $enabled_caches = array_filter($cacheStatus);
-        $disabled_caches = array_diff_key($cacheStatus, $enabled_caches);
-        
-        $checks[] = ['type' => 'info', 'msg' => "Cache types enabled: " . count($enabled_caches) . "/" . count($cacheStatus)];
-        
-        if (count($disabled_caches) > 0) {
-            $checks[] = ['type' => 'warning', 'msg' => "Disabled caches: " . implode(', ', array_keys($disabled_caches))];
-        }
-        
-        // Full Page Cache
-        if (isset($enabled_caches['full_page'])) {
-            $checks[] = ['type' => 'success', 'msg' => "Full Page Cache: ENABLED"];
-        } else {
-            $checks[] = ['type' => 'error', 'msg' => "Full Page Cache: DISABLED - Critical for performance"];
-        }
-        
-        // JS/CSS Performance Settings
-        $scopeConfig = $objectManager->get(\Magento\Framework\App\Config\ScopeConfigInterface::class);
-        
-        // JavaScript Bundling Check
-        $jsBundling = $scopeConfig->getValue('dev/js/enable_js_bundling', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if ($jsBundling) {
-            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Bundling: ENABLED - Can cause performance issues, consider disabling"];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => "JavaScript Bundling: DISABLED"];
-        }
-        
-        // CSS Merge Check
-        $cssMerge = $scopeConfig->getValue('dev/css/merge_css_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if ($cssMerge) {
-            $checks[] = ['type' => 'warning', 'msg' => "CSS Merge: ENABLED - Can cause performance issues, consider disabling"];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => "CSS Merge: DISABLED"];
-        }
-        
-        // JS Merge Check
-        $jsMerge = $scopeConfig->getValue('dev/js/merge_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if ($jsMerge) {
-            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Merge: ENABLED - Can cause performance issues, consider disabling"];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => "JavaScript Merge: DISABLED"];
-        }
-        
-        // CSS/JS Minification
-        $cssMinify = $scopeConfig->getValue('dev/css/minify_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        $jsMinify = $scopeConfig->getValue('dev/js/minify_files', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        
-        if ($cssMinify) {
-            $checks[] = ['type' => 'success', 'msg' => "CSS Minification: ENABLED"];
-        } else {
-            $checks[] = ['type' => 'warning', 'msg' => "CSS Minification: DISABLED - Enable for production"];
-        }
-        
-        if ($jsMinify) {
-            $checks[] = ['type' => 'success', 'msg' => "JavaScript Minification: ENABLED"];
-        } else {
-            $checks[] = ['type' => 'warning', 'msg' => "JavaScript Minification: DISABLED - Enable for production"];
-        }
-        
-        // Template Minification
-        $htmlMinify = $scopeConfig->getValue('dev/template/minify_html', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if ($htmlMinify) {
-            $checks[] = ['type' => 'success', 'msg' => "HTML Minification: ENABLED"];
-        } else {
-            $checks[] = ['type' => 'info', 'msg' => "HTML Minification: DISABLED"];
-        }
-        
-        // Check for Hyva Theme (License Compliance)
-        $moduleManager = $objectManager->get(\Magento\Framework\Module\Manager::class);
-        $hyvaModules = [
-            'Hyva_Theme',
-            'Hyva_Base',
-            'Hyva_GraphqlViewModel'
-        ];
-        
-        $hyvaDetected = false;
-        foreach ($hyvaModules as $hyvaModule) {
-            if ($moduleManager->isEnabled($hyvaModule)) {
-                $hyvaDetected = true;
-                break;
-            }
-        }
-        
-        if ($hyvaDetected) {
-            $checks[] = ['type' => 'error', 'msg' => "Hyva Theme DETECTED - WARNING: Hyva is a commercial theme. Using it with Magento Open Source may violate licensing terms. Ask Adobe to provide a clarification and audit for this case"];
-                 } else {
-             $checks[] = ['type' => 'success', 'msg' => "Hyva Theme: NOT DETECTED"];
-         }
-         
-         
-                  // Additional check if module is enabled
-         if ($moduleManager->isEnabled('React_React')) {
-             $checks[] = ['type' => 'success', 'msg' => "React Luma Module: ENABLED"];
-         } else {
-             $checks[] = ['type' => 'warning', 'msg' => "React Luma Module: NOT INSTALLED - Install this opensource module for frontend Google Page Speed performance benefits"];
-         }
-         
-         // Check for Mage_FPC Performance Module
-         if ($moduleManager->isEnabled('Mage_FPC')) {
-             $checks[] = ['type' => 'success', 'msg' => "Mage FPC Module: ENABLED - Enhanced Full Page Cache performance active"];
-         } else {
-             // Check if the module is installed but not enabled
-                $checks[] = ['type' => 'warning', 'msg' => "Mage FPC Module: NOT INSTALLED - Recommended for improved Full Page Cache performance. Install with: composer require mage/fpc"];
-         }
-    } catch (\Exception $e) {
-        $checks[] = ['type' => 'error', 'msg' => "Magento check error: " . $e->getMessage()];
-    }
-    
-    return $checks;
-}
+// Display Composer optimization checks
+echo $block->displayChecks('Composer Optimization:', $block->checkComposerOptimization());
 
-// Display all checks
-function displayChecks($title, $checks) {
-    echo "<div class='console-prompt'>{$title}</div>";
-    foreach ($checks as $check) {
-        $class = '';
-        switch ($check['type']) {
-            case 'success':
-                $class = 'test-result';
-                break;
-            case 'error':
-                $class = 'test-error';
-                break;
-            case 'warning':
-                $class = 'performance-warning';
-                break;
-            case 'info':
-            default:
-                $class = 'performance-result';
-                break;
-        }
-        echo "<div class='{$class}'>{$check['msg']}</div>";
-    }
-}
+echo '<div class="console-subtitle">[DATABASE ANALYSIS]</div>';
 
-// Run all configuration checks
-displayChecks('PHP Configuration:', checkPHPConfiguration());
-displayChecks('Server Configuration:', checkServerConfiguration());
-displayChecks('Magento Configuration:', checkMagentoConfiguration());
+// Display database table size checks
+echo $block->displayChecks('Top 5 Largest Database Tables:', $block->checkDatabaseTableSizes());
+
+echo '<div class="console-subtitle">[REDIS MEMORY ANALYSIS]</div>';
+
+// Display Redis memory usage checks
+echo $block->displayChecks('Redis Memory Usage:', $block->checkRedisMemoryUsage());
+
+echo '<div class="console-subtitle">[MAGENTO CONFIGURATION]</div>';
+
+// Display Magento configuration checks
+echo $block->displayChecks('Magento Configuration:', $block->checkMagentoConfiguration());
 
 echo '<div class="console-subtitle">[SECURITY ANALYSIS]</div>';
 
-// Security Checks
-function checkSecurity() {
-    $checks = [];
-    
-    // PHP Version - More comprehensive check
-    $php_version = PHP_VERSION;
-    if (version_compare($php_version, '8.3.0', '<')) {
-        if (version_compare($php_version, '8.2.0', '<')) {
-            if (version_compare($php_version, '8.1.0', '<')) {
-                $checks[] = ['type' => 'error', 'msg' => "PHP version: {$php_version} - OUTDATED, upgrade to PHP 8.3+ for security and performance"];
-            } else {
-                $checks[] = ['type' => 'warning', 'msg' => "PHP version: {$php_version} - Upgrade to PHP 8.3+ for latest features and performance"];
-            }
-        } else {
-            $checks[] = ['type' => 'warning', 'msg' => "PHP version: {$php_version} - Consider upgrading to PHP 8.3+ for optimal performance"];
-        }
-    } else {
-        $checks[] = ['type' => 'success', 'msg' => "PHP version: {$php_version} - LATEST"];
-    }
-    
-    // Dangerous Functions
-    $dangerous_functions = ['exec', 'shell_exec', 'system', 'passthru', 'eval'];
-    $disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
-    
-    foreach ($dangerous_functions as $func) {
-        if (function_exists($func) && !in_array($func, $disabled_functions)) {
-            $checks[] = ['type' => 'warning', 'msg' => "Dangerous function {$func}() is ENABLED"];
-        } else {
-            $checks[] = ['type' => 'success', 'msg' => "Dangerous function {$func}() is DISABLED"];
-        }
-    }
-    
-    // File Permissions
-    $sensitive_dirs = [
-        'app/etc' => 'Configuration directory',
-        'var/log' => 'Log directory',
-        'pub/media' => 'Media directory'
-    ];
-    
-    foreach ($sensitive_dirs as $dir => $desc) {
-        if (is_dir($dir)) {
-            $perms = substr(sprintf('%o', fileperms($dir)), -4);
-            if ($perms > '0755') {
-                $checks[] = ['type' => 'warning', 'msg' => "{$desc} permissions: {$perms} - too permissive"];
-            } else {
-                $checks[] = ['type' => 'success', 'msg' => "{$desc} permissions: {$perms}"];
-            }
-        }
-    }
-    
-    return $checks;
-}
-
-displayChecks('Security Configuration:', checkSecurity());
+// Display security checks
+echo $block->displayChecks('Security Configuration:', $block->checkSecurity());
 ?>
 <?php
 // Initialize escaper at the top for the entire template
@@ -1325,6 +974,131 @@ function toggleCollapsible() {
         toggle.textContent = '▼';
     }
 }
+
+// Filter results functionality
+let currentFilter = 'all';
+
+function filterResults(filterType) {
+    currentFilter = filterType;
+    
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Get all result elements
+    const elements = document.querySelectorAll('.test-result, .test-error, .performance-warning, .performance-result');
+    
+    elements.forEach(element => {
+        let show = false;
+        
+        switch (filterType) {
+            case 'all':
+                show = true;
+                break;
+            case 'error':
+                show = element.classList.contains('test-error');
+                break;
+            case 'warning':
+                show = element.classList.contains('performance-warning');
+                break;
+            case 'errors-warnings':
+                show = element.classList.contains('test-error') || element.classList.contains('performance-warning');
+                break;
+            case 'issues':
+                show = element.classList.contains('test-error') || element.classList.contains('performance-warning');
+                break;
+        }
+        
+        if (show) {
+            element.classList.remove('filter-hidden');
+        } else {
+            element.classList.add('filter-hidden');
+        }
+    });
+    
+    // Filter console-prompt elements based on their associated results
+    const prompts = document.querySelectorAll('.console-prompt');
+    prompts.forEach(prompt => {
+        let shouldHidePrompt = true;
+        let currentElement = prompt.nextElementSibling;
+        
+        // Look through following elements until we find the next prompt or end
+        while (currentElement && !currentElement.classList.contains('console-prompt')) {
+            // If we find a result element that's visible, keep the prompt
+            if ((currentElement.classList.contains('test-result') || 
+                 currentElement.classList.contains('test-error') || 
+                 currentElement.classList.contains('performance-warning') || 
+                 currentElement.classList.contains('performance-result')) &&
+                !currentElement.classList.contains('filter-hidden')) {
+                shouldHidePrompt = false;
+                break;
+            }
+            currentElement = currentElement.nextElementSibling;
+        }
+        
+        // Hide/show the prompt based on whether it has visible results
+        if (shouldHidePrompt && filterType !== 'all') {
+            prompt.classList.add('filter-hidden');
+        } else {
+            prompt.classList.remove('filter-hidden');
+        }
+    });
+    
+    // Also filter console-subtitle elements (section headers)
+    const subtitles = document.querySelectorAll('.console-subtitle');
+    subtitles.forEach(subtitle => {
+        let shouldHideSubtitle = true;
+        let currentElement = subtitle.nextElementSibling;
+        
+        // Look through following elements until we find the next subtitle or end
+        while (currentElement && !currentElement.classList.contains('console-subtitle')) {
+            // If we find a result element that's visible, keep the subtitle
+            if ((currentElement.classList.contains('test-result') || 
+                 currentElement.classList.contains('test-error') || 
+                 currentElement.classList.contains('performance-warning') || 
+                 currentElement.classList.contains('performance-result') ||
+                 currentElement.classList.contains('console-prompt')) &&
+                !currentElement.classList.contains('filter-hidden')) {
+                shouldHideSubtitle = false;
+                break;
+            }
+            currentElement = currentElement.nextElementSibling;
+        }
+        
+        // Hide/show the subtitle based on whether it has visible content
+        if (shouldHideSubtitle && filterType !== 'all') {
+            subtitle.classList.add('filter-hidden');
+        } else {
+            subtitle.classList.remove('filter-hidden');
+        }
+    });
+    
+    // Update filter summary
+    updateFilterSummary();
+}
+
+function updateFilterSummary() {
+    const visible = document.querySelectorAll('.test-result:not(.filter-hidden), .test-error:not(.filter-hidden), .performance-warning:not(.filter-hidden), .performance-result:not(.filter-hidden)').length;
+    const total = document.querySelectorAll('.test-result, .test-error, .performance-warning, .performance-result').length;
+    
+    // Create or update summary
+    let summary = document.querySelector('.filter-summary');
+    if (!summary) {
+        summary = document.createElement('div');
+        summary.className = 'filter-summary';
+        summary.style.cssText = 'color: #00aaff; font-size: 11px; margin-top: 5px;';
+        document.querySelector('.filter-controls').appendChild(summary);
+    }
+    
+    summary.textContent = `Showing ${visible} of ${total} results`;
+}
+
+// Initialize filter summary on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateFilterSummary();
+});
 </script>
 
 		
