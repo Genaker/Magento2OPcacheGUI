@@ -467,6 +467,9 @@ class Gui extends \Magento\Backend\Block\Template
         $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
         $checks[] = ['type' => 'info', 'msg' => "Server: {$server_software}"];
         
+        // Magento Cloud Detection
+        $this->checkMagentoCloud($checks);
+        
         // Document Root Permissions
         $doc_root = $_SERVER['DOCUMENT_ROOT'] ?? '';
         if ($doc_root && is_writable($doc_root)) {
@@ -512,6 +515,84 @@ class Gui extends \Magento\Backend\Block\Template
         }
         
         return $checks;
+    }
+
+    /**
+     * Check if running on Magento Cloud and provide migration recommendations
+     *
+     * @param array &$checks Reference to checks array to add results to
+     * @return void
+     */
+    private function checkMagentoCloud(array &$checks): void
+    {
+        $isMagentoCloud = false;
+        $cloudIndicators = [];
+        
+        // Check for Magento Cloud environment variables
+        $cloudEnvVars = [
+            'MAGENTO_CLOUD_PROJECT' => 'Project ID',
+            'MAGENTO_CLOUD_ENVIRONMENT' => 'Environment',
+            'MAGENTO_CLOUD_BRANCH' => 'Branch',
+            'MAGENTO_CLOUD_TREE_ID' => 'Tree ID',
+            'MAGENTO_CLOUD_APPLICATION_NAME' => 'Application',
+            'PLATFORM_PROJECT' => 'Platform Project',
+            'PLATFORM_ENVIRONMENT' => 'Platform Environment'
+        ];
+        
+        foreach ($cloudEnvVars as $envVar => $description) {
+            if (!empty($_ENV[$envVar]) || !empty(getenv($envVar))) {
+                $isMagentoCloud = true;
+                $cloudIndicators[] = $description;
+                $checks[] = ['type' => 'info', 'msg' => "🔍 Found environment variable: {$envVar}"];
+            }
+        }
+        
+        // Check for cloud-specific directories and files
+        $cloudPaths = [
+            '/.magento.app.yaml' => 'Magento Cloud configuration',
+            '/.magento/services.yaml' => 'Cloud services configuration',
+            '/.magento/routes.yaml' => 'Cloud routes configuration',
+            '/var/log/platform' => 'Platform log directory'
+        ];
+        
+        foreach ($cloudPaths as $path => $description) {
+            if (file_exists(BP . $path)) {
+                $isMagentoCloud = true;
+                $cloudIndicators[] = $description;
+                $checks[] = ['type' => 'info', 'msg' => "🔍 Found cloud file: {$path}"];
+            }
+        }
+        
+        // Check hostname patterns common to Magento Cloud
+        $hostname = gethostname();
+        $checks[] = ['type' => 'info', 'msg' => "Hostname: " . ($hostname ?: 'Unknown')];
+        if ($hostname && (
+            strpos($hostname, 'web') === 0 || 
+            strpos($hostname, 'app') === 0 ||
+            preg_match('/^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+$/', $hostname)
+        )) {
+            $cloudIndicators[] = 'Cloud hostname pattern';
+            $checks[] = ['type' => 'info', 'msg' => " Cloud hostname pattern detected"];
+        }
+        
+        // Check for cloud-specific PHP extensions or configurations
+        if (extension_loaded('newrelic') && function_exists('newrelic_get_appname')) {
+            $appName = newrelic_get_appname();
+            if (strpos($appName, 'magento-cloud') !== false || strpos($appName, 'platform-sh') !== false) {
+                $isMagentoCloud = true;
+                $cloudIndicators[] = 'New Relic cloud integration';
+            }
+        }
+        
+        if ($isMagentoCloud) {
+            $indicators = implode(', ', array_unique($cloudIndicators));
+            $checks[] = ['type' => 'warning', 'msg' => "MAGENTO CLOUD DETECTED ({$indicators}) - Consider migrating to better cloud solutions"];
+            $checks[] = ['type' => 'info', 'msg' => "→ Recommended alternatives: AWS (EC2/ECS), Microsoft Azure (App Service), Oracle Cloud (Compute)"];
+            $checks[] = ['type' => 'info', 'msg' => "→ Benefits: Better performance, lower costs, more control, advanced caching (Redis/Varnish)"];
+            $checks[] = ['type' => 'info', 'msg' => "→ Migration to: AWS, Azure, Oracle Cloud"];
+        } else {
+            $checks[] = ['type' => 'success', 'msg' => "Not running on Magento Cloud - Good choice for performance and cost optimization"];
+        }
     }
 
     /**
@@ -905,7 +986,7 @@ class Gui extends \Magento\Backend\Block\Template
             if ($htmlMinify) {
                 $checks[] = ['type' => 'success', 'msg' => "HTML Minification: ENABLED"];
             } else {
-                $checks[] = ['type' => 'info', 'msg' => "HTML Minification: DISABLED"];
+                $checks[] = ['type' => 'warning', 'msg' => "HTML Minification: DISABLED - Enable for production"];
             }
             
             // Check for Hyva Theme (License Compliance)
