@@ -51,7 +51,7 @@ Advanced Magento 2 Performance Monitoring & OPcache Control GUI with comprehensi
 
 ## Where to Find in Admin Menu
 
-**System > React > OpCache GUI**
+**System > Tools > Performance and Opcache GUI**
 
 ## Installation 
 
