@@ -1,0 +1,52 @@
+<style>
+
+    li.nav-tab.nav-tab-link-realtime {
+        display: none !important;
+    }
+
+</style>
+
+<?php
+try {
+    if (!class_exists(\Amnuts\Opcache\Service::class)) {
+        throw new \RuntimeException(
+            __('Amnuts\Opcache\Service class is not available. Make sure the amnuts/opcache-gui package is installed.')
+        );
+    }
+    
+  echo '<div class="opcache-dashboard">';
+
+    
+    // Create iframe for isolated OPcache GUI
+    $standaloneUrl = $this->getUrl('opcache_gui/index/standalone');
+    echo '<div class="opcache-iframe-container" style="
+        width: 100%; 
+        height: 800px; 
+        border: 1px solid #ddd; 
+        border-radius: 4px; 
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background: #fff;
+    ">';
+    echo '<iframe src="' . $escaper->escapeUrl($standaloneUrl) . '" 
+                 style="width: 100%; height: 100%; border: none; display: block;" 
+                 frameborder="0"
+                 scrolling="auto"
+                 title="OPcache GUI"
+                 loading="lazy">
+          </iframe>';
+    echo '</div>';
+    
+    echo '<p style="margin-top: 10px; color: #666; font-size: 12px;">
+        <strong>Note:</strong> The OPcache GUI is displayed in an isolated frame to prevent style conflicts with Magento Admin.
+        <a href="' . $escaper->escapeUrl($standaloneUrl) . '" target="_blank" style="margin-left: 10px;">Open in new window →</a>
+    </p>';
+    
+    echo '</div>';
+} catch (\Throwable $e) {
+    echo '<div class="performance-error">' .
+        '<strong>' . $escaper->escapeHtml(__('Error loading OPcache GUI:')) . '</strong> ' .
+        $escaper->escapeHtml($e->getMessage()) .
+    '</div>';
+}
+?>

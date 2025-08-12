@@ -19,6 +19,14 @@
         <remove src="Magento_Ui::css/styles.css"/>
         <remove src="css/styles-m.css"/>
         <remove src="css/styles-l.css"/>
+        
+        <!-- ExtJS and additional CSS files -->
+        <remove src="extjs/resources/css/ext-all.css"/>
+        <remove src="extjs/resources/css/ytheme-magento.css"/>
+        <remove src="jquery/uppy/dist/uppy-custom.css"/>
+        <remove src="jquery/jstree/themes/default/style.css"/>
+        <remove src="css/styles-old.css"/>
+        <remove src="css/styles.css"/>
     </head>
     <body>
         <referenceContainer name="head" remove="true"/>
@@ -30,7 +38,7 @@
         <container name="opcache.content" htmlTag="div" htmlClass="opcache-iframe-content">
             <block class="Genaker\Opcache\Block\Adminhtml\Index\Gui" 
                    name="opcache.gui" 
-                   template="Genaker_Opcache::index/gui.phtml"/>
+                   template="Genaker_Opcache::index/opcache.phtml"/>
         </container>
     </body>
 </page>

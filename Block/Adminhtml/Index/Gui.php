@@ -136,6 +136,291 @@ class Gui extends \Magento\Backend\Block\Template
     }
 
     /**
+     * Run performance benchmarks and return formatted checks
+     *
+     * @return array
+     */
+    public function runPerformanceBenchmarks(): array
+    {
+        $checks = [];
+        $toolkit = $this->getPerformanceToolkit();
+        $performance_iterations = $this->getPerformanceIterations();
+        
+        try {
+            // CPU Performance Test
+            $checks[] = ['type' => 'info', 'msg' => "Running CPU benchmark ({$performance_iterations} iterations)..."];
+            $cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $performance_iterations, true, 'CPU Test', [], $checks);
+            $checks[] = ['type' => 'success', 'msg' => "CPU Performance: Best: " . number_format($cpu_stats['best'], 2) . "ms | Avg: " . number_format($cpu_stats['avg'], 2) . "ms | 95th: " . number_format($cpu_stats['percentile95'], 2) . "ms | Worst: " . number_format($cpu_stats['worst'], 2) . "ms"];
+            
+            // Memory Test
+            $checks[] = ['type' => 'info', 'msg' => "Testing memory allocation..."];
+            $memory_test = $toolkit->testMemoryAllocation();
+            $checks[] = ['type' => 'success', 'msg' => "Memory Test: " . number_format($memory_test['time'], 4) . " seconds, " . number_format($memory_test['memory'] / 1024 / 1024, 2) . " MB allocated"];
+            
+            // File I/O Test
+            $checks[] = ['type' => 'info', 'msg' => "Testing file I/O operations..."];
+            $file_time = $toolkit->testFileOperations();
+            $checks[] = ['type' => 'success', 'msg' => "File I/O Performance: " . number_format($file_time, 4) . " seconds"];
+            
+            // Database Test
+            $checks[] = ['type' => 'info', 'msg' => "Testing database operations..."];
+            $db_time = $toolkit->testDatabaseOperations($this->getDbPerformanceIterations());
+            if (is_string($db_time)) {
+                $checks[] = ['type' => 'error', 'msg' => "Database Test: $db_time"];
+            } else {
+                $checks[] = ['type' => 'success', 'msg' => "Database Performance: " . number_format($db_time, 4) . " seconds"];
+            }
+            
+            // MySQL Latency Test
+            $checks[] = ['type' => 'info', 'msg' => "Testing MySQL latency (10 requests)..."];
+            $mysql_latency = $toolkit->testMySQLLatency();
+            if (is_string($mysql_latency)) {
+                $checks[] = ['type' => 'error', 'msg' => "MySQL Latency Test: $mysql_latency"];
+            } else {
+                $avg_ms = $mysql_latency['avg'] * 1000;
+                $best_ms = $mysql_latency['best'] * 1000;
+                $worst_ms = $mysql_latency['worst'] * 1000;
+                $p95_ms = $mysql_latency['p95'] * 1000; // Fixed: use 'p95' instead of 'percentile95'
+                
+                if ($avg_ms > 100) {
+                    $status_class = 'error';
+                    $status_text = 'SLOW - check database server';
+                } elseif ($avg_ms > 50) {
+                    $status_class = 'warning';
+                    $status_text = 'MODERATE';
+                } else {
+                    $status_class = 'success';
+                    $status_text = 'GOOD';
+                }
+                
+                $checks[] = ['type' => $status_class, 'msg' => "MySQL Latency ({$status_text}): Best: " . number_format($best_ms, 2) . "ms | Avg: " . number_format($avg_ms, 2) . "ms | 95th: " . number_format($p95_ms, 2) . "ms | Worst: " . number_format($worst_ms, 2) . "ms"];
+            }
+            
+            // Redis Test
+            $checks[] = ['type' => 'info', 'msg' => "Testing Redis performance (10 requests)..."];
+            $redis_latency = $toolkit->testRedisLatency();
+            if (is_string($redis_latency)) {
+                $checks[] = ['type' => 'error', 'msg' => "Redis Test: $redis_latency"];
+            } else {
+                $avg_ms = $redis_latency['avg'] * 1000;
+                $best_ms = $redis_latency['best'] * 1000;
+                $worst_ms = $redis_latency['worst'] * 1000;
+                $p95_ms = $redis_latency['p95'] * 1000; // Fixed: use 'p95' instead of 'percentile95'
+                
+                if ($avg_ms > 50) {
+                    $status_class = 'error';
+                    $status_text = 'SLOW - check Redis server';
+                } elseif ($avg_ms > 20) {
+                    $status_class = 'warning';
+                    $status_text = 'MODERATE';
+                } else {
+                    $status_class = 'success';
+                    $status_text = 'GOOD';
+                }
+                
+                $checks[] = ['type' => $status_class, 'msg' => "Redis Latency ({$status_text}): Best: " . number_format($best_ms, 2) . "ms | Avg: " . number_format($avg_ms, 2) . "ms | 95th: " . number_format($p95_ms, 2) . "ms | Worst: " . number_format($worst_ms, 2) . "ms"];
+            }
+            
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'Performance benchmark error: ' . $e->getMessage()];
+        }
+        
+        return $checks;
+    }
+
+    /**
+     * Run HTTP performance tests and return formatted checks
+     *
+     * @return array
+     */
+    public function runHTTPPerformanceTests(): array
+    {
+        $checks = [];
+        $toolkit = $this->getPerformanceToolkit();
+        $baseUrl = $this->getMagentoBaseUrl();
+        
+        try {
+            $checks[] = ['type' => 'info', 'msg' => "Base URL: {$baseUrl}"];
+            
+            // Test main page
+            $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance (5 iterations) - Main page..."];
+            $main_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Main Page', [$baseUrl], $checks);
+            if (is_string($main_page_stats)) {
+                $checks[] = ['type' => 'error', 'msg' => "Main Page Performance Test: $main_page_stats"];
+            } else {
+                if ($main_page_stats['avg'] > 2000) {
+                    $status_class = 'error';
+                    $status_text = 'SLOW - check network/server';
+                } elseif ($main_page_stats['avg'] > 1000) {
+                    $status_class = 'warning';
+                    $status_text = 'MODERATE';
+                } else {
+                    $status_class = 'success';
+                    $status_text = 'GOOD';
+                }
+                
+                $checks[] = ['type' => $status_class, 'msg' => "Main Page Performance ({$status_text}): Best: " . number_format($main_page_stats['best'], 2) . "ms | Avg: " . number_format($main_page_stats['avg'], 2) . "ms | 95th: " . number_format($main_page_stats['percentile95'], 2) . "ms | Worst: " . number_format($main_page_stats['worst'], 2) . "ms"];
+            }
+            
+            // Test login page
+            $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance (2 iterations) - Login page..."];
+            $login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 2, true, 'Login Page', [$baseUrl . 'customer/account/login/'], $checks);
+            if (is_string($login_page_stats)) {
+                $checks[] = ['type' => 'error', 'msg' => "Login Page Performance Test: $login_page_stats"];
+            } else {
+                if ($login_page_stats['avg'] > 2000) {
+                    $status_class = 'error';
+                    $status_text = 'SLOW - check network/server';
+                } elseif ($login_page_stats['avg'] > 1000) {
+                    $status_class = 'warning';
+                    $status_text = 'MODERATE';
+                } else {
+                    $status_class = 'success';
+                    $status_text = 'GOOD';
+                }
+                
+                $checks[] = ['type' => $status_class, 'msg' => "Login Page Performance ({$status_text}): Best: " . number_format($login_page_stats['best'], 2) . "ms | Avg: " . number_format($login_page_stats['avg'], 2) . "ms | 95th: " . number_format($login_page_stats['percentile95'], 2) . "ms | Worst: " . number_format($login_page_stats['worst'], 2) . "ms"];
+            }
+            
+            // Test random product page
+            $http_performance_iterations = $this->getHttpPerformanceIterations();
+            $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance ({$http_performance_iterations} iterations) - Random product page (cached)..."];
+            try {
+                $randomProductUrl = $this->getRandomProductUrl();
+                if ($randomProductUrl) {
+                    $checks[] = ['type' => 'info', 'msg' => "Random Product URL: {$randomProductUrl}"];
+                    $random_product_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Product (Cached)', [$randomProductUrl], $checks);
+                    if (is_string($random_product_stats)) {
+                        $checks[] = ['type' => 'error', 'msg' => "Random Product Performance Test: $random_product_stats"];
+                    } else {
+                        if ($random_product_stats['avg'] > 2000) {
+                            $status_class = 'error';
+                            $status_text = 'SLOW - check network/server';
+                        } elseif ($random_product_stats['avg'] > 1000) {
+                            $status_class = 'warning';
+                            $status_text = 'MODERATE';
+                        } else {
+                            $status_class = 'success';
+                            $status_text = 'GOOD';
+                        }
+                        
+                        $checks[] = ['type' => $status_class, 'msg' => "Random Product Performance ({$status_text}): Best: " . number_format($random_product_stats['best'], 2) . "ms | Avg: " . number_format($random_product_stats['avg'], 2) . "ms | 95th: " . number_format($random_product_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_product_stats['worst'], 2) . "ms"];
+                    }
+                } else {
+                    $checks[] = ['type' => 'warning', 'msg' => "No random product available for testing - check if products exist and are enabled"];
+                }
+            } catch (\Exception $e) {
+                $checks[] = ['type' => 'error', 'msg' => "Random Product Test Error: " . $e->getMessage()];
+            }
+            
+            // Test random category page
+            $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance ({$http_performance_iterations} iterations) - Random category page (cached)..."];
+            try {
+                $randomCategoryUrl = $this->getRandomCategoryUrl();
+                if ($randomCategoryUrl) {
+                    $checks[] = ['type' => 'info', 'msg' => "Random Category URL: {$randomCategoryUrl}"];
+                    $random_category_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Category (Cached)', [$randomCategoryUrl], $checks);
+                    if (is_string($random_category_stats)) {
+                        $checks[] = ['type' => 'error', 'msg' => "Random Category Performance Test: $random_category_stats"];
+                    } else {
+                        if ($random_category_stats['avg'] > 2000) {
+                            $status_class = 'error';
+                            $status_text = 'SLOW - check network/server';
+                        } elseif ($random_category_stats['avg'] > 1000) {
+                            $status_class = 'warning';
+                            $status_text = 'MODERATE';
+                        } else {
+                            $status_class = 'success';
+                            $status_text = 'GOOD';
+                        }
+                        
+                        $checks[] = ['type' => $status_class, 'msg' => "Random Category Performance ({$status_text}): Best: " . number_format($random_category_stats['best'], 2) . "ms | Avg: " . number_format($random_category_stats['avg'], 2) . "ms | 95th: " . number_format($random_category_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_category_stats['worst'], 2) . "ms"];
+                    }
+                } else {
+                    $checks[] = ['type' => 'warning', 'msg' => "No random category available for testing - check if categories exist and are active"];
+                }
+            } catch (\Exception $e) {
+                $checks[] = ['type' => 'error', 'msg' => "Random Category Test Error: " . $e->getMessage()];
+            }
+            
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'HTTP performance test error: ' . $e->getMessage()];
+        }
+        
+        return $checks;
+    }
+
+    /**
+     * Run uncached HTTP performance tests and return formatted checks
+     *
+     * @return array
+     */
+    public function runUncachedHTTPPerformanceTests(): array
+    {
+        $checks = [];
+        $toolkit = $this->getPerformanceToolkit();
+        $baseUrl = $this->getMagentoBaseUrl();
+        $http_performance_iterations = $this->getHttpPerformanceIterations();
+        
+        try {
+            // Test main page (uncached)
+            $checks[] = ['type' => 'info', 'msg' => "Testing UNCACHED HTTP performance ({$http_performance_iterations} iterations) - Main page"];
+            $main_page_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Main Page (Uncached)', [$baseUrl], $checks);
+            if (is_string($main_page_uncached_stats)) {
+                $checks[] = ['type' => 'error', 'msg' => "Main Page Uncached Performance Test: $main_page_uncached_stats"];
+            } else {
+                if ($main_page_uncached_stats['avg'] > 5000) {
+                    $status_class = 'error';
+                    $status_text = 'VERY SLOW - optimize';
+                } elseif ($main_page_uncached_stats['avg'] > 3000) {
+                    $status_class = 'warning';
+                    $status_text = 'SLOW';
+                } else {
+                    $status_class = 'success';
+                    $status_text = 'ACCEPTABLE';
+                }
+                
+                $checks[] = ['type' => $status_class, 'msg' => "Main Page Uncached Performance ({$status_text}): Best: " . number_format($main_page_uncached_stats['best'], 2) . "ms | Avg: " . number_format($main_page_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($main_page_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($main_page_uncached_stats['worst'], 2) . "ms"];
+            }
+            
+            // Test random product page (uncached)
+            $checks[] = ['type' => 'info', 'msg' => "Testing UNCACHED HTTP performance ({$http_performance_iterations} iterations) - Random product page"];
+            try {
+                $randomProductUrl = $this->getRandomProductUrl();
+                if ($randomProductUrl) {
+                    $checks[] = ['type' => 'info', 'msg' => "Random Product URL (Uncached): {$randomProductUrl}"];
+                    $random_product_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Random Product (Uncached)', [$randomProductUrl], $checks);
+                    if (is_string($random_product_uncached_stats)) {
+                        $checks[] = ['type' => 'error', 'msg' => "Random Product Uncached Performance Test: $random_product_uncached_stats"];
+                    } else {
+                        if ($random_product_uncached_stats['avg'] > 5000) {
+                            $status_class = 'error';
+                            $status_text = 'VERY SLOW - optimize';
+                        } elseif ($random_product_uncached_stats['avg'] > 3000) {
+                            $status_class = 'warning';
+                            $status_text = 'SLOW';
+                        } else {
+                            $status_class = 'success';
+                            $status_text = 'ACCEPTABLE';
+                        }
+                        
+                        $checks[] = ['type' => $status_class, 'msg' => "Random Product Uncached Performance ({$status_text}): Best: " . number_format($random_product_uncached_stats['best'], 2) . "ms | Avg: " . number_format($random_product_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($random_product_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_product_uncached_stats['worst'], 2) . "ms"];
+                    }
+                } else {
+                    $checks[] = ['type' => 'warning', 'msg' => "No random product available for uncached testing"];
+                }
+            } catch (\Exception $e) {
+                $checks[] = ['type' => 'error', 'msg' => "Random Product Uncached Test Error: " . $e->getMessage()];
+            }
+            
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'Uncached HTTP performance test error: ' . $e->getMessage()];
+        }
+        
+        return $checks;
+    }
+
+    /**
      * Get a random visible+enabled product URL for the current store.
      */
     public function getRandomProductUrl(?int $storeId = null): ?string
@@ -320,7 +605,7 @@ class Gui extends \Magento\Backend\Block\Template
             // Check memory consumption setting
             $memoryConsumption = $memoryConsumption / 1024 / 1024;
             if ($memoryConsumption < 256) {
-                $checks[] = ['type' => 'warning', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB - Increase to 512MB+ for Magento'];
+                $checks[] = ['type' => 'error', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB - Increase to 512MB+ for Magento'];
             } else {
                 $checks[] = ['type' => 'success', 'msg' => 'OPcache memory consumption: ' . number_format($memoryConsumption, 0) . 'MB'];
             }
@@ -336,7 +621,7 @@ class Gui extends \Magento\Backend\Block\Template
             // Check max accelerated files
             $maxFiles = $opcacheConfig['directives']['opcache.max_accelerated_files'] ?? 0;
             if ($maxFiles < 100000) {
-                $checks[] = ['type' => 'warning', 'msg' => 'Max accelerated files: ' . number_format($maxFiles) . ' - Increase to 100,000+ for Magento'];
+                $checks[] = ['type' => 'error', 'msg' => 'Max accelerated files: ' . number_format($maxFiles) . ' - Increase to 100,000+ for Magento'];
             } else {
                 $checks[] = ['type' => 'success', 'msg' => 'Max accelerated files: ' . number_format($maxFiles)];
             }
@@ -379,6 +664,9 @@ class Gui extends \Magento\Backend\Block\Template
         } else {
             $checks[] = ['type' => 'success', 'msg' => 'Xdebug: NOT DETECTED - Good for production'];
         }
+        
+        // Check if OPcache is enabled for CLI
+        $this->checkOPcacheCLI($checks);
         
         return $checks;
     }
@@ -543,7 +831,6 @@ class Gui extends \Magento\Backend\Block\Template
             if (!empty($_ENV[$envVar]) || !empty(getenv($envVar))) {
                 $isMagentoCloud = true;
                 $cloudIndicators[] = $description;
-                $checks[] = ['type' => 'info', 'msg' => "🔍 Found environment variable: {$envVar}"];
             }
         }
         
@@ -559,7 +846,6 @@ class Gui extends \Magento\Backend\Block\Template
             if (file_exists(BP . $path)) {
                 $isMagentoCloud = true;
                 $cloudIndicators[] = $description;
-                $checks[] = ['type' => 'info', 'msg' => "🔍 Found cloud file: {$path}"];
             }
         }
         
@@ -580,8 +866,8 @@ class Gui extends \Magento\Backend\Block\Template
             $appName = newrelic_get_appname();
             if (strpos($appName, 'magento-cloud') !== false || strpos($appName, 'platform-sh') !== false) {
                 $isMagentoCloud = true;
-                $cloudIndicators[] = 'New Relic cloud integration';
             }
+            $checks[] = ['type' => 'success', 'msg' => "New Relic integration detected"];
         }
         
         if ($isMagentoCloud) {
@@ -591,7 +877,358 @@ class Gui extends \Magento\Backend\Block\Template
             $checks[] = ['type' => 'info', 'msg' => "→ Benefits: Better performance, lower costs, more control, advanced caching (Redis/Varnish)"];
             $checks[] = ['type' => 'info', 'msg' => "→ Migration to: AWS, Azure, Oracle Cloud"];
         } else {
-            $checks[] = ['type' => 'success', 'msg' => "Not running on Magento Cloud - Good choice for performance and cost optimization"];
+            $checks[] = ['type' => 'success', 'msg' => "Not running on Magento(Adobe/Platform.SH) Cloud - Good choice for performance and cost optimization"];
+        }
+    }
+
+    /**
+     * Check for Amasty extensions and warn about Belarusian company risks
+     *
+     * @param array &$checks Reference to checks array to add results to
+     * @return void
+     */
+    private function checkAmastyExtensions(array &$checks): void
+    {
+        try {
+            // List of common Amasty modules to check for
+            $amastyModules = [
+                'Amasty_Base',
+                'Amasty_Core',
+                'Amasty_ShopbyBase',
+                'Amasty_Shopby',
+                'Amasty_Checkout',
+                'Amasty_OneStepCheckout',
+                'Amasty_PageSpeedOptimizer',
+                'Amasty_DeliveryDate',
+                'Amasty_OrderStatus',
+                'Amasty_GiftCard',
+                'Amasty_Promo',
+                'Amasty_Rules',
+                'Amasty_Feed',
+                'Amasty_SeoToolkit',
+                'Amasty_Meta',
+                'Amasty_SeoRichData',
+                'Amasty_Blog',
+                'Amasty_Faq',
+                'Amasty_Reviews',
+                'Amasty_CustomerAttributes',
+                'Amasty_OrderAttributes',
+                'Amasty_ProductAttachment',
+                'Amasty_Label',
+                'Amasty_StorePickup',
+                'Amasty_CompanyAccount',
+                'Amasty_RequestQuote',
+                'Amasty_InvisibleCaptcha',
+                'Amasty_GDPR',
+                'Amasty_CronScheduleList',
+                'Amasty_AdminActionsLog'
+            ];
+
+            $installedAmastyModules = [];
+            $enabledAmastyModules = [];
+
+            foreach ($amastyModules as $moduleName) {
+                if ($this->moduleManager->isOutputEnabled($moduleName)) {
+                    $enabledAmastyModules[] = $moduleName;
+                }
+                if ($this->moduleManager->isEnabled($moduleName)) {
+                    $installedAmastyModules[] = $moduleName;
+                }
+            }
+
+            if (!empty($installedAmastyModules)) {
+                $moduleCount = count($installedAmastyModules);
+                $enabledCount = count($enabledAmastyModules);
+                
+                $checks[] = ['type' => 'warning', 'msg' => "AMASTY EXTENSIONS DETECTED ({$moduleCount} installed) - Security and compliance risks"];
+                $checks[] = ['type' => 'error', 'msg' => "→ Amasty is a Belarusian company - Consider geopolitical and data security implications"];
+                $checks[] = ['type' => 'info', 'msg' => "→ Risks: Data sovereignty, sanctions compliance, supply chain security, code auditing difficulties"];
+                $checks[] = ['type' => 'info', 'msg' => "→ Alternatives: Commerce Extensions, MageWorx, Mageplaza, IWD Agency, Webkul"];
+                $checks[] = ['type' => 'info', 'msg' => "→ Consider: EU/US-based extension providers for better compliance and support"];
+                
+                // Show first few installed modules
+                $moduleList = array_slice($installedAmastyModules, 0, 5);
+                $moreCount = max(0, $moduleCount - 5);
+                $moduleDisplay = implode(', ', $moduleList);
+                if ($moreCount > 0) {
+                    $moduleDisplay .= " (and {$moreCount} more)";
+                }
+                $checks[] = ['type' => 'info', 'msg' => "→ Installed modules: {$moduleDisplay}"];
+                
+            } else {
+                $checks[] = ['type' => 'success', 'msg' => "No Amasty extensions detected - Good for security and compliance"];
+            }
+
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'Amasty extension check error: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Check if OPcache is enabled for CLI using exec command
+     *
+     * @param array &$checks Reference to checks array to add results to
+     * @return void
+     */
+    private function checkOPcacheCLI(array &$checks): void
+    {
+        try {
+            // Check if exec function is available
+            if (!function_exists('exec')) {
+                $checks[] = ['type' => 'warning', 'msg' => 'CLI OPcache check: exec() function disabled - Cannot check CLI OPcache status'];
+                return;
+            }
+            
+            // Try to get CLI PHP version and OPcache status
+            $command = 'php -v 2>&1';
+            $output = [];
+            $returnCode = 0;
+            
+            exec($command, $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                $checks[] = ['type' => 'warning', 'msg' => 'CLI OPcache check: Cannot execute PHP CLI command'];
+                return;
+            }
+            
+            // Check if OPcache is mentioned in CLI version output
+            $versionOutput = implode(' ', $output);
+            $hasOPcache = stripos($versionOutput, 'opcache') !== false;
+            
+            if ($hasOPcache) {
+                //$checks[] = ['type' => 'info', 'msg' => 'CLI OPcache: DETECTED in PHP CLI version - checking configuration...'];
+            } else {
+                //$checks[] = ['type' => 'info', 'msg' => 'CLI OPcache: NOT DETECTED in PHP CLI version - checking modules...'];
+            }
+            
+            // More detailed check using php -m command
+            $command = 'php -m 2>&1';
+            $modules = [];
+            $returnCode = 0;
+            
+            exec($command, $modules, $returnCode);
+            
+            if ($returnCode === 0) {
+                $moduleList = implode(' ', $modules);
+                $hasOPcacheModule = stripos($moduleList, 'zend opcache') !== false || 
+                                  stripos($moduleList, 'opcache') !== false;
+                
+                if ($hasOPcacheModule) {
+                    //$checks[] = ['type' => 'info', 'msg' => 'CLI OPcache module: LOADED in CLI modules - checking enable_cli setting...'];
+                    
+                    // Try to get actual CLI OPcache configuration
+                    $configCommand = 'php -r "if(extension_loaded(\'Zend OPcache\')){echo opcache_get_configuration()[\'directives\'][\'opcache.enable_cli\'] ? \'enabled\' : \'disabled\';} else {echo \'not_loaded\';}" 2>&1';
+                    $configOutput = [];
+                    $configReturnCode = 0;
+                    
+                    exec($configCommand, $configOutput, $configReturnCode);
+                    
+                    if ($configReturnCode === 0 && !empty($configOutput[0])) {
+                        $cliStatus = trim($configOutput[0]);
+                        
+                        // Validate if output is one of expected values
+                        if (in_array($cliStatus, ['enabled', 'disabled', 'not_loaded', '1', '0', 'true', 'false'])) {
+                            // Normalize boolean-like responses
+                            if (in_array($cliStatus, ['1', 'true'])) {
+                                $cliStatus = 'enabled';
+                            } elseif (in_array($cliStatus, ['0', 'false'])) {
+                                $cliStatus = 'disabled';
+                            }
+                            
+                            switch ($cliStatus) {
+                                case 'enabled':
+                                    $checks[] = ['type' => 'warning', 'msg' => 'CLI OPcache enable_cli: ENABLED - Consider disabling for most Magento setups'];
+                                    $checks[] = ['type' => 'info', 'msg' => ' Disable OPcache for CLI for most Magento setups (opcache.enable_cli=0)'];
+                                    $checks[] = ['type' => 'info', 'msg' => ' Enable it only if you run long-lived CLI workers (e.g., bin/magento queue:consumers:start)'];
+                                    $checks[] = ['type' => 'info', 'msg' => ' Reason: CLI scripts are typically short-lived and OPcache compile overhead outweighs benefits for CLI but works for FPM'];
+                                    break;
+                                case 'disabled':
+                                    $checks[] = ['type' => 'success', 'msg' => 'CLI OPcache enable_cli: DISABLED - Recommended for most Magento setups'];
+                                    $checks[] = ['type' => 'info', 'msg' => ' Good choice: CLI scripts are typically short-lived, OPcache overhead not beneficial'];
+                                    break;
+                                case 'not_loaded':
+                                    $checks[] = ['type' => 'error', 'msg' => 'CLI OPcache: Extension not loaded in CLI - Check CLI php.ini'];
+                                    break;
+                            }
+                        } else {
+                            // Handle unexpected output that might contain errors, warnings, or other text
+                            if (strlen($cliStatus) > 50) {
+                                $cliStatus = substr($cliStatus, 0, 50) . '...';
+                            }
+                            $checks[] = ['type' => 'error', 'msg' => "CLI OPcache check returned unexpected output: '{$cliStatus}' - Check PHP CLI configuration"];
+                        }
+                    }
+                } else {
+                    $checks[] = ['type' => 'warning', 'msg' => 'CLI OPcache module: NOT FOUND in CLI modules list'];
+                }
+            }
+            
+            // Check CLI vs Web PHP versions
+            $webVersion = PHP_VERSION;
+            $cliVersionCommand = 'php -r "echo PHP_VERSION;" 2>&1';
+            $cliVersionOutput = [];
+            
+            exec($cliVersionCommand, $cliVersionOutput, $returnCode);
+            
+            if ($returnCode === 0 && !empty($cliVersionOutput[0])) {
+                $cliVersion = trim($cliVersionOutput[0]);
+                
+                // Validate if CLI version is a proper version string (e.g., "8.1.29")
+                if (preg_match('/^\d+\.\d+(\.\d+)?(-[a-zA-Z0-9]+)?$/', $cliVersion)) {
+                    if ($webVersion === $cliVersion) {
+                        $checks[] = ['type' => 'success', 'msg' => "PHP versions match: Web={$webVersion}, CLI={$cliVersion}"];
+                    } else {
+                        $checks[] = ['type' => 'warning', 'msg' => "PHP version mismatch: Web={$webVersion}, CLI={$cliVersion} - May cause inconsistencies"];
+                    }
+                } else {
+                    $checks[] = ['type' => 'error', 'msg' => "CLI PHP version format invalid: '{$cliVersion}' - Expected format: X.Y.Z"];
+                }
+            }
+            
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'CLI OPcache check error: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Check APCu autoloader optimization
+     *
+     * @param array &$checks Reference to checks array to add results to
+     * @param string $composerDir Path to composer directory
+     * @return void
+     */
+    private function checkAPCuAutoloader(array &$checks, string $composerDir): void
+    {
+        try {
+            // Check if APCu extension is available
+            $apcuAvailable = extension_loaded('apcu');
+            $apcuEnabled = $apcuAvailable && ini_get('apc.enabled');
+            $apcuCli = $apcuAvailable && ini_get('apc.enable_cli');
+
+            if (!$apcuAvailable) {
+                $checks[] = ['type' => 'warning', 'msg' => 'APCu extension: NOT INSTALLED - Install APCu for autoloader caching'];
+                $checks[] = ['type' => 'info', 'msg' => ' Install: apt-get install php-apcu (Ubuntu/Debian) or yum install php-pecl-apcu (CentOS/RHEL)'];
+                return;
+            }
+
+            if (!$apcuEnabled) {
+                $checks[] = ['type' => 'warning', 'msg' => 'APCu extension: INSTALLED but DISABLED - Enable in php.ini (apc.enabled=1)'];
+                return;
+            }
+
+            $checks[] = ['type' => 'success', 'msg' => 'APCu extension: INSTALLED and ENABLED'];
+
+            // Check CLI APCu (usually disabled by default)
+            /*if (!$apcuCli) {
+                $checks[] = ['type' => 'info', 'msg' => 'APCu CLI: DISABLED (normal - APCu autoloader works for web requests only)'];
+            } else {
+                $checks[] = ['type' => 'info', 'msg' => 'APCu CLI: ENABLED (apc.enable_cli=1)'];
+            }*/
+
+            // Check if APCu autoloader is actually being used
+            $autoloadReal = $composerDir . '/autoload_real.php';
+            $apcuInUse = false;
+            
+            if (file_exists($autoloadReal)) {
+                $autoloadContent = file_get_contents($autoloadReal);
+                
+                // Check for APCu autoloader patterns
+                $apcuPatterns = [
+                    'apcu_fetch',
+                    'apcu_store', 
+                    'apc_fetch',
+                    'apc_store',
+                    'Composer\\Autoload\\ClassLoader::loadClass',
+                    'self::$loader'
+                ];
+                
+                foreach ($apcuPatterns as $pattern) {
+                    if (strpos($autoloadContent, $pattern) !== false) {
+                        $apcuInUse = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check for APCu cache files or evidence of usage
+            $apcuCacheActive = false;
+            if ($apcuEnabled && function_exists('apcu_cache_info')) {
+                try {
+                    $apcuInfo = apcu_cache_info();
+                    if (isset($apcuInfo['cache_list'])) {
+                        // Look for composer autoloader entries in APCu
+                        foreach ($apcuInfo['cache_list'] as $entry) {
+                            if (isset($entry['info']) && (
+                                strpos($entry['info'], 'composer') !== false ||
+                                strpos($entry['info'], 'autoload') !== false
+                            )) {
+                                $apcuCacheActive = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // APCu info not accessible, continue without error
+                }
+            }
+
+            // Provide recommendations based on APCu status
+            if ($apcuInUse && $apcuCacheActive) {
+                $checks[] = ['type' => 'success', 'msg' => 'APCu autoloader: ACTIVE - Composer autoloader is using APCu cache'];
+                $checks[] = ['type' => 'info', 'msg' => ' Excellent: Classes are cached in memory for faster loading'];
+            } else {
+                $checks[] = ['type' => 'warning', 'msg' => 'APCu autoloader: NOT ACTIVE or not keys in the cache if ACTIVE - Enable with composer dump-autoload -o -a --apcu'];
+                $checks[] = ['type' => 'info', 'msg' => ' Command: composer dump-autoload -o -a --apcu'];
+                $checks[] = ['type' => 'info', 'msg' => ' Benefit: 10-30% faster autoloading through memory caching'];
+            }
+
+            // Check APCu memory settings
+            if ($apcuEnabled) {
+                $apcuMemory = ini_get('apc.shm_size');
+                if ($apcuMemory) {
+                    // Convert to MB for easier reading
+                    $memoryMB = $this->convertToMB($apcuMemory);
+                    if ($memoryMB < 64) {
+                        $checks[] = ['type' => 'warning', 'msg' => "APCu memory: {$apcuMemory} ({$memoryMB}MB) - Consider increasing to 128M+ for better caching"];
+                    } else {
+                        $checks[] = ['type' => 'success', 'msg' => "APCu memory: {$apcuMemory} ({$memoryMB}MB) - Adequate"];
+                    }
+                }
+
+                // Check APCu TTL
+                $apcuTtl = ini_get('apc.ttl');
+                if ($apcuTtl > 0) {
+                    $checks[] = ['type' => 'info', 'msg' => "APCu TTL: {$apcuTtl} seconds"];
+                } else {
+                    $checks[] = ['type' => 'success', 'msg' => 'APCu TTL: 0 (no expiration - recommended for autoloader)'];
+                }
+            }  
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'APCu autoloader check error: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Helper method to convert memory size to MB
+     *
+     * @param string $size
+     * @return int
+     */
+    private function convertToMB(string $size): int
+    {
+        $size = trim($size);
+        $unit = strtolower(substr($size, -1));
+        $value = (int) $size;
+        
+        switch ($unit) {
+            case 'g':
+                return $value * 1024;
+            case 'm':
+                return $value;
+            case 'k':
+                return $value / 1024;
+            default:
+                return $value / (1024 * 1024); // bytes to MB
         }
     }
 
@@ -612,7 +1249,11 @@ class Gui extends \Magento\Backend\Block\Template
      */
     public function checkRedisMemoryUsage(): array
     {
-        return $this->performanceToolkit->checkRedisMemoryUsage();
+        $checks = $this->performanceToolkit->checkRedisMemoryUsage();
+        
+        // Add Redis memory keys analysis
+        $bigKeysChecks = []; //$adaitionalREdisKEyData = $this->checkRedisMemoryKeys();
+        return array_merge($checks, $bigKeysChecks);
     }
 
     /**
@@ -821,9 +1462,10 @@ class Gui extends \Magento\Backend\Block\Template
                 }
                 
                 if (is_numeric($classmapSize) && $classmapSize > 1000) {
-                    $checks[] = ['type' => 'success', 'msg' => "Composer autoloader: OPTIMIZED (Level 1) - {$classmapSize} classes mapped"];
-                } elseif ($classmapSize === 'many' || (is_numeric($classmapSize) && $classmapSize > 0)) {
-                    $checks[] = ['type' => 'success', 'msg' => "Composer autoloader: OPTIMIZED (Level 1) - classmap exists"];
+                    $checks[] = ['type' => 'success', 'msg' => "Composer autoloader: OPTIMIZED (Level 1) - {$classmapSize} classes mapped with composer dump-autoload -o"];
+                } elseif ((is_numeric($classmapSize) && $classmapSize > 0)) {
+                    $checks[] = ['type' => 'success', 'msg' => "Composer autoloader: OPTIMIZED (Level 1) - classmap exists {$classmapSize} classes mapped with the default composer dump-autoload behavior"];
+                    $checks[] = ['type' => 'error', 'msg' => "Run 'composer dump-autoload -o' for better performance and more classes mapped reguraly 20K+ classes"];
                 } else {
                     $checks[] = ['type' => 'warning', 'msg' => "Composer autoloader: Partially optimized - Run 'composer dump-autoload -o' for better performance"];
                 }
@@ -839,12 +1481,8 @@ class Gui extends \Magento\Backend\Block\Template
                 }
             }
             
-            // Check if APCu is available and could be used
-            if (extension_loaded('apcu') && ini_get('apc.enabled')) {
-                $checks[] = ['type' => 'info', 'msg' => "APCu available - Run 'composer dump-autoload -o -a' for maximum optimization"];
-            } else {
-                $checks[] = ['type' => 'warning', 'msg' => 'APCu not available - Install APCu extension for Level 2/A optimization'];
-            }
+            // Enhanced APCu autoloader checking
+            $this->checkAPCuAutoloader($checks, $composerDir);
             
             // Check composer.json for optimization settings
             $composerJson = BP . '/composer.json';
@@ -862,7 +1500,7 @@ class Gui extends \Magento\Backend\Block\Template
                 if (isset($composerConfig['config']['apcu-autoloader']) && $composerConfig['config']['apcu-autoloader'] === true) {
                     $checks[] = ['type' => 'success', 'msg' => 'Composer config: apcu-autoloader is enabled in composer.json'];
                 } else {
-                    $checks[] = ['type' => 'info', 'msg' => 'Composer config: Consider adding "apcu-autoloader": true for maximum performance (requires APCu)'];
+                    $checks[] = ['type' => 'warning', 'msg' => 'Composer config: Consider adding "apcu-autoloader": true for maximum performance (requires APCu)'];
                 }
                 
                 // Check for classmap-authoritative
@@ -877,7 +1515,7 @@ class Gui extends \Magento\Backend\Block\Template
             $checks[] = ['type' => 'info', 'msg' => 'Optimization Commands:'];
             $checks[] = ['type' => 'info', 'msg' => '• Level 1: composer dump-autoload -o (optimize autoloader)'];
             $checks[] = ['type' => 'info', 'msg' => '• Level 2: composer dump-autoload -o -a (APCu cache, requires APCu extension)'];
-            $checks[] = ['type' => 'info', 'msg' => '• Production: composer dump-autoload -o --classmap-authoritative'];
+            $checks[] = ['type' => 'info', 'msg' => '• Production: composer dump-autoload -o -a --apcu'];
             
         } catch (\Exception $e) {
             $checks[] = ['type' => 'error', 'msg' => 'Composer optimization check error: ' . $e->getMessage()];
@@ -988,6 +1626,9 @@ class Gui extends \Magento\Backend\Block\Template
             } else {
                 $checks[] = ['type' => 'warning', 'msg' => "HTML Minification: DISABLED - Enable for production"];
             }
+            
+            // Check for Amasty extensions (Belarusian company)
+            $this->checkAmastyExtensions($checks);
             
             // Check for Hyva Theme (License Compliance)
             $hyvaModules = [
@@ -1179,5 +1820,168 @@ class Gui extends \Magento\Backend\Block\Template
             $output .= "<div class='{$class}'>{$check['msg']}</div>";
         }
         return $output;
+    }
+
+    /**
+     * Check Redis memory usage by keys using redis-cli --memkeys command
+     *
+     * @return array
+     */
+    private function checkRedisMemoryKeys(): array
+    {
+        $checks = [];
+        
+        try {
+            // Check if exec function is available
+            if (!function_exists('exec')) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Redis memory keys check: exec() function disabled - Cannot analyze Redis key memory usage'];
+                return $checks;
+            }
+            
+            // Get Redis connection info from Magento configuration
+            $cacheSettings = $this->deploymentConfig->get('cache');
+            $host = '127.0.0.1';
+            $port = 6379;
+            $password = null;
+            $database = 0;
+            
+            if (isset($cacheSettings['frontend']['default']['backend_options'])) {
+                $backendOptions = $cacheSettings['frontend']['default']['backend_options'];
+                $host = $backendOptions['server'] ?? $host;
+                $port = isset($backendOptions['port']) ? (int)$backendOptions['port'] : $port;
+                $password = $backendOptions['password'] ?? null;
+                $database = isset($backendOptions['database']) ? (int)$backendOptions['database'] : $database;
+            }
+            
+            // Build redis-cli command
+            $command = "redis-cli";
+            if ($host !== '127.0.0.1' && $host !== 'localhost') {
+                $command .= " -h {$host}";
+            }
+            if ($port !== 6379) {
+                $command .= " -p {$port}";
+            }
+            if ($password) {
+                $command .= " -a '{$password}'";
+            }
+            if ($database !== 0) {
+                $command .= " -n {$database}";
+            }
+            // Try --memkeys first (Redis 4.0+), fallback to --bigkeys for older versions
+            $command .= " --memkeys --memkeys-samples 20000 2>&1";
+            
+            $output = [];
+            $returnCode = 0;
+            
+            exec($command, $output, $returnCode);
+            
+            // Check if --memkeys is not supported (help text or error)
+            $isMemkeysSupported = true;
+            if (!empty($output)) {
+                $firstLine = trim($output[0]);
+                if (strpos($firstLine, 'Scanning the entire keyspace') !== false || 
+                    strpos($firstLine, 'Unknown option') !== false ||
+                    strpos($firstLine, '#') === 0 ||
+                    $returnCode !== 0) {
+                    $isMemkeysSupported = false;
+                }
+            } else {
+                $isMemkeysSupported = false;
+            }
+            
+            // Fallback to --bigkeys if --memkeys is not supported
+            if (!$isMemkeysSupported) {
+                $checks[] = ['type' => 'info', 'msg' => 'Redis --memkeys not supported, falling back to --bigkeys'];
+                
+                // Rebuild command with --bigkeys
+                $command = "redis-cli";
+                if ($host !== '127.0.0.1' && $host !== 'localhost') {
+                    $command .= " -h {$host}";
+                }
+                if ($port !== 6379) {
+                    $command .= " -p {$port}";
+                }
+                if ($password) {
+                    $command .= " -a '{$password}'";
+                }
+                if ($database !== 0) {
+                    $command .= " -n {$database}";
+                }
+                $command .= " --bigkeys 2>&1";
+                
+                $output = [];
+                $returnCode = 0;
+                exec($command, $output, $returnCode);
+                
+                // Verify --bigkeys worked
+                if ($returnCode !== 0 || empty($output)) {
+                    $checks[] = ['type' => 'warning', 'msg' => 'Redis --bigkeys also failed - redis-cli may not be installed or accessible'];
+                    return $checks;
+                }
+            }
+            
+            if ($returnCode !== 0) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Redis keys check: Cannot execute redis-cli command (redis-cli may not be installed)'];
+                $checks[] = ['type' => 'info', 'msg' => ' Install redis-tools: apt-get install redis-tools (Ubuntu/Debian)'];
+                return $checks;
+            }
+            
+            if (empty($output)) {
+                $checks[] = ['type' => 'warning', 'msg' => 'Redis keys: No output from redis-cli'];
+                return $checks;
+            }
+
+            $checks[] = ['type' => 'info', 'msg' => "REDIS KEYS ANALYSIS:"];
+            $lineData = $this->parseRedisKeysOutput($output, $isMemkeysSupported);
+            foreach ($lineData as $key) {
+                if ($key !== '') {
+                    $checks[] = ['type' => 'info', 'msg' => "{$key}"];
+                }
+            }  
+        } catch (\Exception $e) {
+            $checks[] = ['type' => 'error', 'msg' => 'Redis memory keys check error: ' . $e->getMessage()];
+        }
+        
+        return $checks;
+    }
+
+    /**
+     * Parse redis-cli output (--memkeys or --bigkeys)
+     *
+     * @param array $output
+     * @param bool $isMemkeys
+     * @return array
+     */
+    private function parseRedisKeysOutput(array $output, bool $isMemkeys = true): array
+    {
+        $result = [
+            'summary' => [],
+            'highest' => []
+        ];
+        $lines = [];
+        
+        foreach ($output as $line) {
+            $lines[] = trim($line);
+        }
+        return $lines;
+    }
+
+    /**
+     * Format bytes into human-readable format
+     *
+     * @param int $bytes
+     * @return string
+     */
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1024 * 1024 * 1024) {
+            return round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+        } elseif ($bytes >= 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return round($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
     }
 }

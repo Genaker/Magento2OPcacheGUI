@@ -52,9 +52,10 @@ class PerformaceToolkit
      * @param bool $showIndividual
      * @param string $testLabel
      * @param array $testArgs
+     * @param array $checks
      * @return array
      */
-    public function runPerformanceTestMultipleTimes(callable $testFunction, int $iterations = 5, bool $showIndividual = false, string $testLabel = 'Test', array $testArgs = []): array
+    public function runPerformanceTestMultipleTimes(callable $testFunction, int $iterations = 5, bool $showIndividual = false, string $testLabel = 'Test', array $testArgs = [], array &$checks): array
     {
         $times = [];
         
@@ -68,7 +69,7 @@ class PerformaceToolkit
             
             if ($showIndividual) {
                 $timeMs = $time * 1000;
-                echo "<div class='test-result'>{$testLabel} " . ($i + 1) . ": " . number_format($timeMs, 2) . "ms</div>";
+                $checks[] = ['type' => 'info', 'msg' => "{$testLabel} " . ($i + 1) . ": " . number_format($timeMs, 2) . "ms"];
             }
         }
         

@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 namespace Genaker\Opcache\Controller\Adminhtml\Index;
 
-class Index extends \Magento\Backend\App\Action
+class Opcache extends \Magento\Backend\App\Action
 {
 
     protected $resultPageFactory;
@@ -24,6 +24,7 @@ class Index extends \Magento\Backend\App\Action
     ) {
         $this->resultPageFactory = $resultPageFactory;
         parent::__construct($context);
+
     }
 
     /**
@@ -33,7 +34,9 @@ class Index extends \Magento\Backend\App\Action
      */
     public function execute()
     {
-        return $this->resultPageFactory->create();
+        $resultPage = $this->resultPageFactory->create();
+        $resultPage->getConfig()->getTitle()->prepend(__('OPcache Management GUI'));
+        
+        return $resultPage;
     }
 }
-
