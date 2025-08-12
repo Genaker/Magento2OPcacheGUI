@@ -1,6 +1,6 @@
 {
     "name": "genaker/module-opcache",
-    "description": "PHP Op-cache monitoring ",
+    "description": "PHP OPCache and Magento Performance monitoring and analitics",
     "type": "magento2-module",
     "license": "MIT",
     "authors": [
