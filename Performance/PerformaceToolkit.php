@@ -48,14 +48,14 @@ class PerformaceToolkit
      * Run performance test multiple times and calculate statistics
      *
      * @param callable $testFunction
+     * @param array $checks
      * @param int $iterations
      * @param bool $showIndividual
      * @param string $testLabel
      * @param array $testArgs
-     * @param array $checks
      * @return array
      */
-    public function runPerformanceTestMultipleTimes(callable $testFunction, int $iterations = 5, bool $showIndividual = false, string $testLabel = 'Test', array $testArgs = [], array &$checks): array
+    public function runPerformanceTestMultipleTimes(callable $testFunction, array &$checks, int $iterations = 5, bool $showIndividual = false, string $testLabel = 'Test', array $testArgs = []): array
     {
         $times = [];
         

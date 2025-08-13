@@ -149,7 +149,7 @@ class Gui extends \Magento\Backend\Block\Template
         try {
             // CPU Performance Test
             $checks[] = ['type' => 'info', 'msg' => "Running CPU benchmark ({$performance_iterations} iterations)..."];
-            $cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $performance_iterations, true, 'CPU Test', [], $checks);
+            $cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $checks, $performance_iterations, true, 'CPU Test', []);
             $checks[] = ['type' => 'success', 'msg' => "CPU Performance: Best: " . number_format($cpu_stats['best'], 2) . "ms | Avg: " . number_format($cpu_stats['avg'], 2) . "ms | 95th: " . number_format($cpu_stats['percentile95'], 2) . "ms | Worst: " . number_format($cpu_stats['worst'], 2) . "ms"];
             
             // Memory Test
@@ -244,7 +244,7 @@ class Gui extends \Magento\Backend\Block\Template
             
             // Test main page
             $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance (5 iterations) - Main page..."];
-            $main_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 5, true, 'Main Page', [$baseUrl], $checks);
+            $main_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $checks, 5, true, 'Main Page', [$baseUrl]);
             if (is_string($main_page_stats)) {
                 $checks[] = ['type' => 'error', 'msg' => "Main Page Performance Test: $main_page_stats"];
             } else {
@@ -264,7 +264,7 @@ class Gui extends \Magento\Backend\Block\Template
             
             // Test login page
             $checks[] = ['type' => 'info', 'msg' => "Testing HTTP performance (2 iterations) - Login page..."];
-            $login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], 2, true, 'Login Page', [$baseUrl . 'customer/account/login/'], $checks);
+            $login_page_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $checks, 2, true, 'Login Page', [$baseUrl . 'customer/account/login/']);
             if (is_string($login_page_stats)) {
                 $checks[] = ['type' => 'error', 'msg' => "Login Page Performance Test: $login_page_stats"];
             } else {
@@ -289,7 +289,7 @@ class Gui extends \Magento\Backend\Block\Template
                 $randomProductUrl = $this->getRandomProductUrl();
                 if ($randomProductUrl) {
                     $checks[] = ['type' => 'info', 'msg' => "Random Product URL: {$randomProductUrl}"];
-                    $random_product_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Product (Cached)', [$randomProductUrl], $checks);
+                    $random_product_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $checks, $http_performance_iterations, true, 'Random Product (Cached)', [$randomProductUrl]);
                     if (is_string($random_product_stats)) {
                         $checks[] = ['type' => 'error', 'msg' => "Random Product Performance Test: $random_product_stats"];
                     } else {
@@ -319,7 +319,7 @@ class Gui extends \Magento\Backend\Block\Template
                 $randomCategoryUrl = $this->getRandomCategoryUrl();
                 if ($randomCategoryUrl) {
                     $checks[] = ['type' => 'info', 'msg' => "Random Category URL: {$randomCategoryUrl}"];
-                    $random_category_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $http_performance_iterations, true, 'Random Category (Cached)', [$randomCategoryUrl], $checks);
+                    $random_category_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformance'], $checks, $http_performance_iterations, true, 'Random Category (Cached)', [$randomCategoryUrl]);
                     if (is_string($random_category_stats)) {
                         $checks[] = ['type' => 'error', 'msg' => "Random Category Performance Test: $random_category_stats"];
                     } else {
@@ -365,7 +365,7 @@ class Gui extends \Magento\Backend\Block\Template
         try {
             // Test main page (uncached)
             $checks[] = ['type' => 'info', 'msg' => "Testing UNCACHED HTTP performance ({$http_performance_iterations} iterations) - Main page"];
-            $main_page_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Main Page (Uncached)', [$baseUrl], $checks);
+            $main_page_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $checks, $http_performance_iterations, true, 'Main Page (Uncached)', [$baseUrl]);
             if (is_string($main_page_uncached_stats)) {
                 $checks[] = ['type' => 'error', 'msg' => "Main Page Uncached Performance Test: $main_page_uncached_stats"];
             } else {
@@ -389,7 +389,7 @@ class Gui extends \Magento\Backend\Block\Template
                 $randomProductUrl = $this->getRandomProductUrl();
                 if ($randomProductUrl) {
                     $checks[] = ['type' => 'info', 'msg' => "Random Product URL (Uncached): {$randomProductUrl}"];
-                    $random_product_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $http_performance_iterations, true, 'Random Product (Uncached)', [$randomProductUrl], $checks);
+                    $random_product_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $checks, $http_performance_iterations, true, 'Random Product (Uncached)', [$randomProductUrl]);
                     if (is_string($random_product_uncached_stats)) {
                         $checks[] = ['type' => 'error', 'msg' => "Random Product Uncached Performance Test: $random_product_uncached_stats"];
                     } else {
