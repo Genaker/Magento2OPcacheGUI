@@ -149,9 +149,15 @@ class Gui extends \Magento\Backend\Block\Template
         
         try {
             // CPU Performance Test
-            $checks[] = ['type' => 'info', 'msg' => "Running CPU benchmark ({$performance_iterations} iterations)..."];
-            $cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $checks, $performance_iterations, true, 'CPU Test', []);
-            $checks[] = ['type' => 'success', 'msg' => "CPU Performance: Best: " . number_format($cpu_stats['best'], 2) . "ms | Avg: " . number_format($cpu_stats['avg'], 2) . "ms | 95th: " . number_format($cpu_stats['percentile95'], 2) . "ms | Worst: " . number_format($cpu_stats['worst'], 2) . "ms"];
+            $checks[] = ['type' => 'info', 'msg' => "Running CPU PHP benchmark ({$performance_iterations} iterations)..."];
+            $cpu_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testCPUPerformance'], $checks, $performance_iterations, true, 'PHP CPU Test', []);
+            $php_cpu_performance = "BAD";
+            $php_warning = "error";
+            if ((int)$cpu_stats['avg'] < 40) {
+                $php_cpu_performance = "GOOD";
+                $php_warning = "success";
+            }
+            $checks[] = ['type' => $php_warning, 'msg' => "PHP CPU Performance: ({$php_cpu_performance}) - Best: " . number_format($cpu_stats['best'], 2) . "ms | Avg: " . number_format($cpu_stats['avg'], 2) . "ms | 95th: " . number_format($cpu_stats['percentile95'], 2) . "ms | Worst: " . number_format($cpu_stats['worst'], 2) . "ms"];
             
             // Memory Test
             $checks[] = ['type' => 'info', 'msg' => "Testing memory allocation..."];
@@ -412,6 +418,36 @@ class Gui extends \Magento\Backend\Block\Template
                 }
             } catch (\Exception $e) {
                 $checks[] = ['type' => 'error', 'msg' => "Random Product Uncached Test Error: " . $e->getMessage()];
+            }
+
+            // Test random product page (uncached)
+            $checks[] = ['type' => 'info', 'msg' => "Testing UNCACHED HTTP performance ({$http_performance_iterations} iterations) - Random category page"];
+            try {
+                $randomCategoryUrl = $this->getRandomCategoryUrl();
+                if ($randomCategoryUrl) {
+                    $checks[] = ['type' => 'info', 'msg' => "Random Category URL (Uncached): {$randomCategoryUrl}"];
+                    $random_category_uncached_stats = $toolkit->runPerformanceTestMultipleTimes([$toolkit, 'testHTTPPerformanceUncached'], $checks, $http_performance_iterations, true, 'Random Category (Uncached)', [$randomCategoryUrl]);
+                    if (is_string($random_category_uncached_stats)) {
+                        $checks[] = ['type' => 'error', 'msg' => "Random Category Uncached Performance Test: $random_category_uncached_stats"];
+                    } else {
+                        if ($random_category_uncached_stats['avg'] > 5000) {
+                            $status_class = 'error';
+                            $status_text = 'VERY SLOW - optimize';
+                        } elseif ($random_category_uncached_stats['avg'] > 3000) {
+                            $status_class = 'warning';
+                            $status_text = 'SLOW';
+                        } else {
+                            $status_class = 'success';
+                            $status_text = 'ACCEPTABLE';
+                        }
+                        
+                        $checks[] = ['type' => $status_class, 'msg' => "Random Category Uncached Performance ({$status_text}): Best: " . number_format($random_category_uncached_stats['best'], 2) . "ms | Avg: " . number_format($random_category_uncached_stats['avg'], 2) . "ms | 95th: " . number_format($random_category_uncached_stats['percentile95'], 2) . "ms | Worst: " . number_format($random_category_uncached_stats['worst'], 2) . "ms"];
+                    }
+                } else {
+                    $checks[] = ['type' => 'warning', 'msg' => "No random category available for uncached testing"];
+                }
+            } catch (\Exception $e) {
+                $checks[] = ['type' => 'error', 'msg' => "Random Category Uncached Test Error: " . $e->getMessage()];
             }
             
         } catch (\Exception $e) {
