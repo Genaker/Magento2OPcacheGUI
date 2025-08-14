@@ -335,7 +335,108 @@
         display: none !important;
     }
 
+    /* Ask AI Console Button Styles */
+    .ask-ai-console-btn {
+        color: #00ffff;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        text-decoration: none;
+        margin-left: 10px;
+        transition: color 0.2s ease;
+        user-select: none;
+    }
+    
+    .ask-ai-console-btn:hover {
+        color: #ffffff;
+        text-decoration: underline;
+    }
+    
+    .ask-ai-console-btn:active {
+        color: #00ff00;
+    }
+    
+    .ajax-warning-result {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 8px;
+        background: #001111;
+        border-left: 4px solid #00ffff;
+        border: 1px solid #333333;
+    }
+    
+    .ajax-response {
+        color: #ffffff;
+        line-height: 1.4;
+        font-family: monospace, 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New';
+        font-size: 13px;
+    }
+    
+    .ajax-error {
+        color: #ff4444;
+        font-weight: bold;
+        font-family: monospace, 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New';
+        font-size: 13px;
+    }
+    
+    .loading {
+        color: #ffff00;
+        font-style: italic;
+        font-family: monospace, 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New';
+        font-size: 13px;
+    }
+
 </style>
+<script>
+                    function askAI(warningId) {
+                        var warningDiv = document.getElementById(warningId);
+                        var warningText = warningDiv.textContent || warningDiv.innerText;
+                        // Remove the button text from the warning text
+                        warningText = warningText.replace(/\[Ask AI\]/g, '').trim();
+                        
+                        var resultDiv = document.getElementById(warningId + '-result');
+                        resultDiv.style.display = 'block';
+                        
+                        // Create loading animation
+                        var loadingDiv = document.createElement('div');
+                        loadingDiv.className = 'loading';
+                        loadingDiv.innerHTML = 'Loading AI response';
+                        resultDiv.innerHTML = '';
+                        resultDiv.appendChild(loadingDiv);
+                        
+                        // Start dots animation
+                        var dotCount = 0;
+                        var loadingInterval = setInterval(function() {
+                            dotCount = (dotCount + 1) % 4; // 0, 1, 2, 3, then back to 0
+                            var dots = '.'.repeat(dotCount);
+                            loadingDiv.innerHTML = 'Loading AI response' + dots;
+                        }, 500);
+                        
+                        var formData = 'query=' + encodeURIComponent(warningText) + 
+                                      '&conversation_history=' + encodeURIComponent('[]') + 
+                                      '&form_key=' + encodeURIComponent(window.FORM_KEY || '');
+                        
+                        fetch(window.location.origin + '/admin_1afzun1/magentomcpai/chat/query/?isAjax=true', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            clearInterval(loadingInterval);
+                            let message = data.message;
+                            message = message.replace(/\n/g, '<br>').trim();
+                            resultDiv.innerHTML = '<div class="ajax-response">💡 ' + message + '</div>';
+                        })
+                        .catch(error => {
+                            clearInterval(loadingInterval);
+                            resultDiv.innerHTML = '<div class="ajax-error">❌ Error: ' + error.message + '</div>';
+                        });
+                    }
+</script>
 
 <div class="collapsible-wrapper">
     <div class="collapsible-header" onclick="toggleCollapsible()">

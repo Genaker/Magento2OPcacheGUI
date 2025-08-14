@@ -28,6 +28,7 @@ use Genaker\Opcache\Performance\PerformaceToolkit;
 
 class Gui extends \Magento\Backend\Block\Template
 {
+    private $warningId = 1;
     /**
      * Constructor
      *
@@ -1817,7 +1818,17 @@ class Gui extends \Magento\Backend\Block\Template
                     $class = 'performance-result';
                     break;
             }
-            $output .= "<div class='{$class}'>{$check['msg']}</div>";
+            if($this->moduleManager->isEnabled("Genaker_MagentoMcpAi")){
+                $warningId = 'warning-' . $this->warningId++;
+                
+                // Add Ask AI button inline for warnings and errors
+                if (in_array($check['type'], ['warning','error'])) {
+                    $output .= "<div class='{$class}' id='{$warningId}'>{$check['msg']} <span class='ask-ai-console-btn' onclick='askAI(\"{$warningId}\")'>[Ask AI]</span></div>";
+                    $output .= "<div id='{$warningId}-result' class='ajax-warning-result' style='display:none;'></div>";
+                } else {
+                    $output .= "<div class='{$class}' id='{$warningId}'>{$check['msg']}</div>";
+                }
+            }
         }
         return $output;
     }
