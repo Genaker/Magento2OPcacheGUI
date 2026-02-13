@@ -72,7 +72,7 @@ class PerformanceToolkit
     {
         $start = microtime(true);
         for ($i = 0; $i < self::CPU_TEST_ITERATIONS; $i++) { 
-            $j = $i * $i; 
+            $square = $i * $i; 
         }
         $end = microtime(true);
         return $end - $start;
@@ -295,15 +295,11 @@ class PerformanceToolkit
     /**
      * Test HTTP performance
      *
-     * @param string|null $url
+     * @param string $url
      * @return float|string
      */
     public function testHTTPPerformance(string $url)
     {
-        if ($url === null) {
-            throw new \Exception('URL is required');
-        }
-        
         $start = microtime(true);
         
         // Initialize cURL
@@ -346,14 +342,14 @@ class PerformanceToolkit
     /**
      * Test HTTP performance with cache busting
      *
-     * @param string|null $url
+     * @param string $url
      * @return float|string
      */
     public function testHTTPPerformanceUncached(string $url)
     {        
         // Add timestamp parameter to bypass cache
         $separator = (strpos($url, '?') !== false) ? '&' : '?';
-        $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);
+        $uncachedUrl = $url . $separator . 'timestamp=' . time() . random_int(1, 1000);
         
         $start = microtime(true);
         
