@@ -164,6 +164,23 @@ Performance parameters can be customized via `etc/di.xml`:
 
 It's the most effective way to measure and compare Magento PHP code execution performance across different servers.
 
+## **Security Best Practices**
+
+### SSL/TLS Configuration
+- **SSL Verification Enabled**: All HTTP performance tests now verify SSL certificates to prevent man-in-the-middle attacks
+- **Certificate Validation**: Both peer and host verification are enabled for maximum security
+- If testing local development environments with self-signed certificates, use proper certificate management instead of disabling verification
+
+### Access Control
+- **Admin Access Only**: This module is restricted to admin users only
+- **ACL Protection**: Ensure proper ACL rules are configured for your admin users
+- **Password Protection**: Use strong passwords for admin accounts with access to performance tools
+
+### Performance Testing Considerations
+- **Rate Limiting**: Be mindful when running performance tests against production environments
+- **Resource Usage**: Performance tests consume server resources - schedule appropriately
+- **Data Privacy**: Avoid exposing sensitive configuration data in logs or screenshots
+
 ## **Technical Implementation**
 
 ### Class Architecture

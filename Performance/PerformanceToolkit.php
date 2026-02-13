@@ -12,8 +12,42 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\DeploymentConfig;
 use Magento\Framework\App\ProductMetadataInterface;
 
-class PerformaceToolkit
+class PerformanceToolkit
 {
+    /**
+     * Performance test constants
+     */
+    private const CPU_TEST_ITERATIONS = 10000000;
+    private const MEMORY_TEST_ARRAY_SIZE = 100000;
+    private const MEMORY_TEST_STRING_LENGTH = 100;
+    private const FILE_READ_ITERATIONS = 100;
+    private const HTTP_TIMEOUT_SECONDS = 30;
+    private const HTTP_CONNECT_TIMEOUT_SECONDS = 10;
+    private const REDIS_CONNECTION_TIMEOUT_SECONDS = 2;
+    private const OPCACHE_LOW_MEMORY_MB = 32;
+    private const OPCACHE_WARNING_MEMORY_MB = 64;
+    private const BYTES_TO_MB = 1048576; // 1024 * 1024
+    
+    /**
+     * Database table size thresholds (in MB)
+     */
+    private const DB_TABLE_SIZE_LARGE_MB = 1000; // 1GB
+    private const DB_TABLE_SIZE_WARNING_MB = 100;
+    private const DB_TABLE_SIZE_CRITICAL_MB = 500;
+    private const DB_TOTAL_SIZE_LARGE_GB = 5120; // 5GB in MB
+    private const DB_TOTAL_SIZE_VERY_LARGE_GB = 10240; // 10GB in MB
+    
+    /**
+     * Redis memory thresholds (in MB)
+     */
+    private const REDIS_MEMORY_HIGH_MB = 1024; // 1GB
+    private const REDIS_MEMORY_MODERATE_MB = 512;
+    private const REDIS_HIT_RATE_EXCELLENT = 90;
+    private const REDIS_HIT_RATE_GOOD = 80;
+    private const REDIS_HIT_RATE_MODERATE = 60;
+    private const REDIS_FRAGMENTATION_HIGH = 1.5;
+    private const REDIS_FRAGMENTATION_MODERATE = 1.2;
+    
     /**
      * Constructor
      *
@@ -36,11 +70,14 @@ class PerformaceToolkit
      */
     public function testCPUPerformance(): float
     {
-        $start = microtime(TRUE);
-        for ($a = 0; $a < 10000000; $a++) { 
-            $b = $a * $a; 
+        $start = microtime(true);
+        $result = 0;
+        for ($i = 0; $i < self::CPU_TEST_ITERATIONS; $i++) { 
+            $result += $i * $i; 
         }
-        $end = microtime(TRUE);
+        $end = microtime(true);
+        // Use $result to prevent optimization
+        unset($result);
         return $end - $start;
     }
 
@@ -105,18 +142,18 @@ class PerformaceToolkit
      */
     public function testMemoryAllocation(): array
     {
-        $start = microtime(TRUE);
-        $memory_start = memory_get_usage();
+        $start = microtime(true);
+        $memoryStart = memory_get_usage();
         $array = [];
-        for ($i = 0; $i < 100000; $i++) {
-            $array[] = str_repeat('x', 100);
+        for ($i = 0; $i < self::MEMORY_TEST_ARRAY_SIZE; $i++) {
+            $array[] = str_repeat('x', self::MEMORY_TEST_STRING_LENGTH);
         }
-        $memory_end = memory_get_usage();
-        $end = microtime(TRUE);
+        $memoryEnd = memory_get_usage();
+        $end = microtime(true);
         unset($array);
         return [
             'time' => $end - $start,
-            'memory' => $memory_end - $memory_start
+            'memory' => $memoryEnd - $memoryStart
         ];
     }
 
@@ -127,21 +164,23 @@ class PerformaceToolkit
      */
     public function testFileOperations(): float
     {
-        $start = microtime(TRUE);
-        $temp_file = sys_get_temp_dir() . '/magento_perf_test.tmp';
+        $start = microtime(true);
+        $tempFile = sys_get_temp_dir() . '/magento_perf_test_' . uniqid() . '.tmp';
         
         // Write test
-        file_put_contents($temp_file, str_repeat('Test data', 1000));
+        file_put_contents($tempFile, str_repeat('Test data', 1000));
         
         // Read test
-        for ($i = 0; $i < 100; $i++) {
-            $content = file_get_contents($temp_file);
+        for ($i = 0; $i < self::FILE_READ_ITERATIONS; $i++) {
+            $content = file_get_contents($tempFile);
         }
         
         // Cleanup
-        unlink($temp_file);
+        if (file_exists($tempFile)) {
+            unlink($tempFile);
+        }
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         return $end - $start;
     }
 
@@ -153,18 +192,16 @@ class PerformaceToolkit
      */
     public function testDatabaseOperations(int $iterations = 3)
     {
-        $start = microtime(TRUE);
+        $start = microtime(true);
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-            $connection = $resource->getConnection();
+            $connection = $this->resourceConnection->getConnection();
             
             // Simple query test
             for ($i = 0; $i < $iterations; $i++) {
                 $result = $connection->fetchAll("SELECT 1 as test");
             }
             
-            $end = microtime(TRUE);
+            $end = microtime(true);
             return $end - $start;
         } catch (\Exception $e) {
             return 'ERROR: ' . $e->getMessage();
@@ -179,16 +216,14 @@ class PerformaceToolkit
     public function testMySQLLatency()
     {
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-            $connection = $resource->getConnection();
+            $connection = $this->resourceConnection->getConnection();
             
             // Perform 10 latency tests
             $latencies = [];
             for ($i = 0; $i < 10; $i++) {
-                $start = microtime(TRUE);
+                $start = microtime(true);
                 $result = $connection->fetchAll("SELECT 1");
-                $end = microtime(TRUE);
+                $end = microtime(true);
                 $latencies[] = $end - $start;
             }
             
@@ -215,11 +250,8 @@ class PerformaceToolkit
     public function testRedisLatency()
     {
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            
             // Try to get Redis connection from Magento's cache configuration
-            $cacheConfig = $objectManager->get(\Magento\Framework\App\DeploymentConfig::class);
-            $cacheSettings = $cacheConfig->get('cache');
+            $cacheSettings = $this->deploymentConfig->get('cache');
             
             if (isset($cacheSettings['frontend']['default']['backend_options']['server'])) {
                 // Redis is configured, test connection
@@ -228,13 +260,13 @@ class PerformaceToolkit
                     $host = $cacheSettings['frontend']['default']['backend_options']['server'] ?? '127.0.0.1';
                     $port = (int)($cacheSettings['frontend']['default']['backend_options']['port'] ?? 6379);
                     
-                    if ($redis->connect($host, $port, 1)) {
+                    if ($redis->connect($host, $port, self::REDIS_CONNECTION_TIMEOUT_SECONDS)) {
                         // Perform 10 latency tests
                         $latencies = [];
                         for ($i = 0; $i < 10; $i++) {
-                            $start = microtime(TRUE);
+                            $start = microtime(true);
                             $redis->ping();
-                            $end = microtime(TRUE);
+                            $end = microtime(true);
                             $latencies[] = $end - $start;
                         }
                         $redis->close();
@@ -266,16 +298,12 @@ class PerformaceToolkit
     /**
      * Test HTTP performance
      *
-     * @param string|null $url
+     * @param string $url
      * @return float|string
      */
     public function testHTTPPerformance(string $url)
     {
-        if ($url === null) {
-            throw new \Exception('URL is required');
-        }
-        
-        $start = microtime(TRUE);
+        $start = microtime(true);
         
         // Initialize cURL
         $ch = curl_init();
@@ -284,9 +312,10 @@ class PerformaceToolkit
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, self::HTTP_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, self::HTTP_CONNECT_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test');
         
         // Execute the request
@@ -298,7 +327,7 @@ class PerformaceToolkit
         
         curl_close($ch);
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         $totalTime = $end - $start;
         
         // Check for errors
@@ -316,16 +345,16 @@ class PerformaceToolkit
     /**
      * Test HTTP performance with cache busting
      *
-     * @param string|null $url
+     * @param string $url
      * @return float|string
      */
     public function testHTTPPerformanceUncached(string $url)
     {        
         // Add timestamp parameter to bypass cache
         $separator = (strpos($url, '?') !== false) ? '&' : '?';
-        $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);
+        $uncachedUrl = $url . $separator . 'timestamp=' . time() . random_int(1, 1000);
         
-        $start = microtime(TRUE);
+        $start = microtime(true);
         
         // Initialize cURL
         $ch = curl_init();
@@ -334,9 +363,10 @@ class PerformaceToolkit
         curl_setopt($ch, CURLOPT_URL, $uncachedUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, self::HTTP_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, self::HTTP_CONNECT_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test (Uncached)');
         
         // Add cache-busting headers
@@ -355,7 +385,7 @@ class PerformaceToolkit
         
         curl_close($ch);
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         $totalTime = $end - $start;
         
         // Check for errors
@@ -411,12 +441,12 @@ class PerformaceToolkit
             $memoryConsumption = $opcacheConfig['directives']['opcache.memory_consumption'] ?? 0;
             
             // Check free memory (less than 32MB is concerning)
-            if ($memoryFree < 32 * 1024 * 1024) {
-                $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
-            } elseif ($memoryFree < 64 * 1024 * 1024) {
-                $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - LOW, consider increasing memory'];
+            if ($memoryFree < self::OPCACHE_LOW_MEMORY_MB * self::BYTES_TO_MB) {
+                $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
+            } elseif ($memoryFree < self::OPCACHE_WARNING_MEMORY_MB * self::BYTES_TO_MB) {
+                $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - LOW, consider increasing memory'];
             } else {
-                $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - ADEQUATE'];
+                $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - ADEQUATE'];
             }
             
             // Additional checks would continue here...
@@ -502,10 +532,10 @@ class PerformaceToolkit
                 $sizeDisplay = $sizeMB > 1024 ? round($sizeMB / 1024, 2) . 'GB' : $sizeMB . 'MB';
                 
                 // Determine status based on size
-                if ($sizeMB > 1000) { // > 1GB
+                if ($sizeMB > self::DB_TABLE_SIZE_LARGE_MB) { // > 1GB
                     $status = 'error';
                     $statusText = 'LARGE table - consider optimization';
-                } elseif ($sizeMB > 100) { // > 100MB
+                } elseif ($sizeMB > self::DB_TABLE_SIZE_WARNING_MB) { // > 100MB
                     $status = 'warning';
                     $statusText = 'Growing large, monitor size';
                 } else {
@@ -527,7 +557,7 @@ class PerformaceToolkit
                 $checks[] = ['type' => $status, 'msg' => $message];
                 
                 // Add specific recommendations for known problematic tables
-                if ($sizeMB > 500) {
+                if ($sizeMB > self::DB_TABLE_SIZE_CRITICAL_MB) {
                     if (strpos($tableName, 'log_') === 0) {
                         $checks[] = ['type' => 'info', 'msg' => "→ Log table cleanup: Consider truncating old log entries"];
                     } elseif (strpos($tableName, 'session') !== false) {
@@ -562,10 +592,10 @@ class PerformaceToolkit
                     
                     $totalDbDisplay = $totalDbMB > 1024 ? round($totalDbMB / 1024, 2) . 'GB' : $totalDbMB . 'MB';
                     
-                    if ($totalDbMB > 10240) { // > 10GB
+                    if ($totalDbMB > self::DB_TOTAL_SIZE_VERY_LARGE_GB) { // > 10GB
                         $dbStatus = 'error';
                         $dbStatusText = 'VERY LARGE database - consider optimization';
-                    } elseif ($totalDbMB > 5120) { // > 5GB
+                    } elseif ($totalDbMB > self::DB_TOTAL_SIZE_LARGE_GB) { // > 5GB
                         $dbStatus = 'warning';
                         $dbStatusText = 'Large database - monitor growth';
                     } else {
@@ -618,7 +648,7 @@ class PerformaceToolkit
             }
             
             $redis = new \Redis();
-            if (!$redis->connect($host, $port, 2)) {
+            if (!$redis->connect($host, $port, self::REDIS_CONNECTION_TIMEOUT_SECONDS)) {
                 $checks[] = ['type' => 'error', 'msg' => "Cannot connect to Redis server at {$host}:{$port}"];
                 return $checks;
             }
@@ -639,13 +669,13 @@ class PerformaceToolkit
             $memoryRss = isset($info['used_memory_rss_human']) ? $info['used_memory_rss_human'] : 'Unknown';
             
             // Convert to MB for comparison
-            $memoryMB = round($memoryUsed / 1024 / 1024, 1);
+            $memoryMB = round($memoryUsed / self::BYTES_TO_MB, 1);
             
             // Determine status based on memory usage
-            if ($memoryMB > 1024) { // > 1GB
+            if ($memoryMB > self::REDIS_MEMORY_HIGH_MB) { // > 1GB
                 $status = 'warning';
                 $statusText = 'HIGH memory usage';
-            } elseif ($memoryMB > 512) { // > 512MB
+            } elseif ($memoryMB > self::REDIS_MEMORY_MODERATE_MB) { // > 512MB
                 $status = 'warning';
                 $statusText = 'Moderate memory usage';
             } else {
@@ -679,11 +709,11 @@ class PerformaceToolkit
                 if ($total > 0) {
                     $hitRate = round(($hits / $total) * 100, 2);
                     
-                    if ($hitRate > 90) {
+                    if ($hitRate > self::REDIS_HIT_RATE_EXCELLENT) {
                         $checks[] = ['type' => 'success', 'msg' => "Redis hit rate: {$hitRate}% - EXCELLENT"];
-                    } elseif ($hitRate > 80) {
+                    } elseif ($hitRate > self::REDIS_HIT_RATE_GOOD) {
                         $checks[] = ['type' => 'success', 'msg' => "Redis hit rate: {$hitRate}% - GOOD"];
-                    } elseif ($hitRate > 60) {
+                    } elseif ($hitRate > self::REDIS_HIT_RATE_MODERATE) {
                         $checks[] = ['type' => 'warning', 'msg' => "Redis hit rate: {$hitRate}% - MODERATE"];
                     } else {
                         $checks[] = ['type' => 'error', 'msg' => "Redis hit rate: {$hitRate}% - LOW, check cache strategy"];
@@ -706,9 +736,9 @@ class PerformaceToolkit
             // Memory fragmentation
             if (isset($info['mem_fragmentation_ratio'])) {
                 $fragmentation = (float)$info['mem_fragmentation_ratio'];
-                if ($fragmentation > 1.5) {
+                if ($fragmentation > self::REDIS_FRAGMENTATION_HIGH) {
                     $checks[] = ['type' => 'warning', 'msg' => "Redis memory fragmentation: {$fragmentation} - HIGH, consider restart"];
-                } elseif ($fragmentation > 1.2) {
+                } elseif ($fragmentation > self::REDIS_FRAGMENTATION_MODERATE) {
                     $checks[] = ['type' => 'info', 'msg' => "Redis memory fragmentation: {$fragmentation} - Moderate"];
                 } else {
                     $checks[] = ['type' => 'success', 'msg' => "Redis memory fragmentation: {$fragmentation} - Good"];
