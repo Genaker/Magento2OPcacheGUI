@@ -140,17 +140,17 @@ class PerformanceToolkit
     public function testMemoryAllocation(): array
     {
         $start = microtime(true);
-        $memory_start = memory_get_usage();
+        $memoryStart = memory_get_usage();
         $array = [];
         for ($i = 0; $i < self::MEMORY_TEST_ARRAY_SIZE; $i++) {
             $array[] = str_repeat('x', self::MEMORY_TEST_STRING_LENGTH);
         }
-        $memory_end = memory_get_usage();
+        $memoryEnd = memory_get_usage();
         $end = microtime(true);
         unset($array);
         return [
             'time' => $end - $start,
-            'memory' => $memory_end - $memory_start
+            'memory' => $memoryEnd - $memoryStart
         ];
     }
 
@@ -162,19 +162,19 @@ class PerformanceToolkit
     public function testFileOperations(): float
     {
         $start = microtime(true);
-        $temp_file = sys_get_temp_dir() . '/magento_perf_test_' . uniqid() . '.tmp';
+        $tempFile = sys_get_temp_dir() . '/magento_perf_test_' . uniqid() . '.tmp';
         
         // Write test
-        file_put_contents($temp_file, str_repeat('Test data', 1000));
+        file_put_contents($tempFile, str_repeat('Test data', 1000));
         
         // Read test
         for ($i = 0; $i < self::FILE_READ_ITERATIONS; $i++) {
-            $content = file_get_contents($temp_file);
+            $content = file_get_contents($tempFile);
         }
         
         // Cleanup
-        if (file_exists($temp_file)) {
-            unlink($temp_file);
+        if (file_exists($tempFile)) {
+            unlink($tempFile);
         }
         
         $end = microtime(true);
