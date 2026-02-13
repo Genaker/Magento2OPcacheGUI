@@ -24,7 +24,7 @@ use Magento\Framework\App\State;
 use Magento\Framework\App\Cache\Manager as CacheManager;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Module\Manager as ModuleManager;
-use Genaker\Opcache\Performance\PerformaceToolkit;
+use Genaker\Opcache\Performance\PerformanceToolkit;
 
 class Gui extends \Magento\Backend\Block\Template
 {
@@ -47,7 +47,7 @@ class Gui extends \Magento\Backend\Block\Template
      * @param CacheManager $cacheManager
      * @param ScopeConfigInterface $scopeConfig
      * @param ModuleManager $moduleManager
-     * @param PerformaceToolkit $performanceToolkit
+     * @param PerformanceToolkit $performanceToolkit
      * @param array $config
      * @param array $data
      */
@@ -67,7 +67,7 @@ class Gui extends \Magento\Backend\Block\Template
         private CacheManager $cacheManager,
         private ScopeConfigInterface $scopeConfig,
         private ModuleManager $moduleManager,
-        private PerformaceToolkit $performanceToolkit,
+        private PerformanceToolkit $performanceToolkit,
         private array $config = [],
         array $data = []
     ) {
@@ -129,9 +129,9 @@ class Gui extends \Magento\Backend\Block\Template
     /**
      * Get the performance toolkit instance
      *
-     * @return PerformaceToolkit
+     * @return PerformanceToolkit
      */
-    public function getPerformanceToolkit(): PerformaceToolkit
+    public function getPerformanceToolkit(): PerformanceToolkit
     {
         return $this->performanceToolkit;
     }

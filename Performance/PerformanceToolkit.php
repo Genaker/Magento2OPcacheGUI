@@ -12,8 +12,22 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\DeploymentConfig;
 use Magento\Framework\App\ProductMetadataInterface;
 
-class PerformaceToolkit
+class PerformanceToolkit
 {
+    /**
+     * Performance test constants
+     */
+    private const CPU_TEST_ITERATIONS = 10000000;
+    private const MEMORY_TEST_ARRAY_SIZE = 100000;
+    private const MEMORY_TEST_STRING_LENGTH = 100;
+    private const FILE_READ_ITERATIONS = 100;
+    private const HTTP_TIMEOUT_SECONDS = 30;
+    private const HTTP_CONNECT_TIMEOUT_SECONDS = 10;
+    private const REDIS_CONNECTION_TIMEOUT_SECONDS = 2;
+    private const OPCACHE_LOW_MEMORY_MB = 32;
+    private const OPCACHE_WARNING_MEMORY_MB = 64;
+    private const BYTES_TO_MB = 1048576; // 1024 * 1024
+    
     /**
      * Constructor
      *
@@ -36,11 +50,11 @@ class PerformaceToolkit
      */
     public function testCPUPerformance(): float
     {
-        $start = microtime(TRUE);
-        for ($a = 0; $a < 10000000; $a++) { 
-            $b = $a * $a; 
+        $start = microtime(true);
+        for ($i = 0; $i < self::CPU_TEST_ITERATIONS; $i++) { 
+            $j = $i * $i; 
         }
-        $end = microtime(TRUE);
+        $end = microtime(true);
         return $end - $start;
     }
 
@@ -105,14 +119,14 @@ class PerformaceToolkit
      */
     public function testMemoryAllocation(): array
     {
-        $start = microtime(TRUE);
+        $start = microtime(true);
         $memory_start = memory_get_usage();
         $array = [];
-        for ($i = 0; $i < 100000; $i++) {
-            $array[] = str_repeat('x', 100);
+        for ($i = 0; $i < self::MEMORY_TEST_ARRAY_SIZE; $i++) {
+            $array[] = str_repeat('x', self::MEMORY_TEST_STRING_LENGTH);
         }
         $memory_end = memory_get_usage();
-        $end = microtime(TRUE);
+        $end = microtime(true);
         unset($array);
         return [
             'time' => $end - $start,
@@ -127,21 +141,23 @@ class PerformaceToolkit
      */
     public function testFileOperations(): float
     {
-        $start = microtime(TRUE);
-        $temp_file = sys_get_temp_dir() . '/magento_perf_test.tmp';
+        $start = microtime(true);
+        $temp_file = sys_get_temp_dir() . '/magento_perf_test_' . uniqid() . '.tmp';
         
         // Write test
         file_put_contents($temp_file, str_repeat('Test data', 1000));
         
         // Read test
-        for ($i = 0; $i < 100; $i++) {
+        for ($i = 0; $i < self::FILE_READ_ITERATIONS; $i++) {
             $content = file_get_contents($temp_file);
         }
         
         // Cleanup
-        unlink($temp_file);
+        if (file_exists($temp_file)) {
+            unlink($temp_file);
+        }
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         return $end - $start;
     }
 
@@ -153,7 +169,7 @@ class PerformaceToolkit
      */
     public function testDatabaseOperations(int $iterations = 3)
     {
-        $start = microtime(TRUE);
+        $start = microtime(true);
         try {
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
             $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
@@ -164,7 +180,7 @@ class PerformaceToolkit
                 $result = $connection->fetchAll("SELECT 1 as test");
             }
             
-            $end = microtime(TRUE);
+            $end = microtime(true);
             return $end - $start;
         } catch (\Exception $e) {
             return 'ERROR: ' . $e->getMessage();
@@ -186,9 +202,9 @@ class PerformaceToolkit
             // Perform 10 latency tests
             $latencies = [];
             for ($i = 0; $i < 10; $i++) {
-                $start = microtime(TRUE);
+                $start = microtime(true);
                 $result = $connection->fetchAll("SELECT 1");
-                $end = microtime(TRUE);
+                $end = microtime(true);
                 $latencies[] = $end - $start;
             }
             
@@ -228,13 +244,13 @@ class PerformaceToolkit
                     $host = $cacheSettings['frontend']['default']['backend_options']['server'] ?? '127.0.0.1';
                     $port = (int)($cacheSettings['frontend']['default']['backend_options']['port'] ?? 6379);
                     
-                    if ($redis->connect($host, $port, 1)) {
+                    if ($redis->connect($host, $port, self::REDIS_CONNECTION_TIMEOUT_SECONDS)) {
                         // Perform 10 latency tests
                         $latencies = [];
                         for ($i = 0; $i < 10; $i++) {
-                            $start = microtime(TRUE);
+                            $start = microtime(true);
                             $redis->ping();
-                            $end = microtime(TRUE);
+                            $end = microtime(true);
                             $latencies[] = $end - $start;
                         }
                         $redis->close();
@@ -275,7 +291,7 @@ class PerformaceToolkit
             throw new \Exception('URL is required');
         }
         
-        $start = microtime(TRUE);
+        $start = microtime(true);
         
         // Initialize cURL
         $ch = curl_init();
@@ -284,9 +300,10 @@ class PerformaceToolkit
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, self::HTTP_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, self::HTTP_CONNECT_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test');
         
         // Execute the request
@@ -298,7 +315,7 @@ class PerformaceToolkit
         
         curl_close($ch);
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         $totalTime = $end - $start;
         
         // Check for errors
@@ -325,7 +342,7 @@ class PerformaceToolkit
         $separator = (strpos($url, '?') !== false) ? '&' : '?';
         $uncachedUrl = $url . $separator . 'timestamp=' . time() . rand(1, 1000);
         
-        $start = microtime(TRUE);
+        $start = microtime(true);
         
         // Initialize cURL
         $ch = curl_init();
@@ -334,9 +351,10 @@ class PerformaceToolkit
         curl_setopt($ch, CURLOPT_URL, $uncachedUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, self::HTTP_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, self::HTTP_CONNECT_TIMEOUT_SECONDS);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Magento Performance Test (Uncached)');
         
         // Add cache-busting headers
@@ -355,7 +373,7 @@ class PerformaceToolkit
         
         curl_close($ch);
         
-        $end = microtime(TRUE);
+        $end = microtime(true);
         $totalTime = $end - $start;
         
         // Check for errors
@@ -411,12 +429,12 @@ class PerformaceToolkit
             $memoryConsumption = $opcacheConfig['directives']['opcache.memory_consumption'] ?? 0;
             
             // Check free memory (less than 32MB is concerning)
-            if ($memoryFree < 32 * 1024 * 1024) {
-                $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
-            } elseif ($memoryFree < 64 * 1024 * 1024) {
-                $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - LOW, consider increasing memory'];
+            if ($memoryFree < self::OPCACHE_LOW_MEMORY_MB * self::BYTES_TO_MB) {
+                $checks[] = ['type' => 'error', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - CRITICALLY LOW, increase opcache.memory_consumption'];
+            } elseif ($memoryFree < self::OPCACHE_WARNING_MEMORY_MB * self::BYTES_TO_MB) {
+                $checks[] = ['type' => 'warning', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - LOW, consider increasing memory'];
             } else {
-                $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / 1024 / 1024, 1) . 'MB - ADEQUATE'];
+                $checks[] = ['type' => 'success', 'msg' => 'OPcache free memory: ' . number_format($memoryFree / self::BYTES_TO_MB, 1) . 'MB - ADEQUATE'];
             }
             
             // Additional checks would continue here...
@@ -618,7 +636,7 @@ class PerformaceToolkit
             }
             
             $redis = new \Redis();
-            if (!$redis->connect($host, $port, 2)) {
+            if (!$redis->connect($host, $port, self::REDIS_CONNECTION_TIMEOUT_SECONDS)) {
                 $checks[] = ['type' => 'error', 'msg' => "Cannot connect to Redis server at {$host}:{$port}"];
                 return $checks;
             }
