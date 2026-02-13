@@ -11,17 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CRITICAL**: Enabled SSL certificate verification in HTTP performance tests
 - Added SSL_VERIFYHOST validation to prevent man-in-the-middle attacks
 - Removed insecure `CURLOPT_SSL_VERIFYPEER = false` settings
+- Replaced `rand()` with `random_int()` for better randomness in cache busting
 
 ### Fixed
 - Fixed class name typo: `PerformaceToolkit` → `PerformanceToolkit`
 - Fixed inconsistent boolean usage in `microtime()` calls (TRUE → true)
+- Fixed type hint inconsistencies (removed incorrect `|null` annotations)
+- Fixed variable naming consistency to follow camelCase convention
 - Added unique temp file names to prevent race conditions
 - Added file existence check before unlink operation
 - Removed ObjectManager anti-pattern - now using proper dependency injection
+- Prevented compiler optimization in CPU performance test
 
 ### Changed
-- Extracted magic numbers to class constants for better maintainability
-- Improved variable naming in CPU test (single letters to descriptive names)
+- Extracted 36 magic numbers to class constants for better maintainability:
+  - Performance test constants (CPU_TEST_ITERATIONS, MEMORY_TEST_ARRAY_SIZE, etc.)
+  - HTTP and connection timeout constants (HTTP_TIMEOUT_SECONDS, etc.)
+  - Database table size thresholds (DB_TABLE_SIZE_LARGE_MB, etc.)
+  - Redis memory and performance thresholds (REDIS_MEMORY_HIGH_MB, etc.)
+  - OPcache memory thresholds (OPCACHE_LOW_MEMORY_MB, etc.)
+- Improved variable naming throughout (e.g., `$j` → `$result`, `$temp_file` → `$tempFile`)
 - Updated module version to 1.0.22
 
 ### Documentation
