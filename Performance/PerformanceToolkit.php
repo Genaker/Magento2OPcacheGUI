@@ -29,6 +29,26 @@ class PerformanceToolkit
     private const BYTES_TO_MB = 1048576; // 1024 * 1024
     
     /**
+     * Database table size thresholds (in MB)
+     */
+    private const DB_TABLE_SIZE_LARGE_MB = 1000; // 1GB
+    private const DB_TABLE_SIZE_WARNING_MB = 100;
+    private const DB_TABLE_SIZE_CRITICAL_MB = 500;
+    private const DB_TOTAL_SIZE_LARGE_GB = 5120; // 5GB in MB
+    private const DB_TOTAL_SIZE_VERY_LARGE_GB = 10240; // 10GB in MB
+    
+    /**
+     * Redis memory thresholds (in MB)
+     */
+    private const REDIS_MEMORY_HIGH_MB = 1024; // 1GB
+    private const REDIS_MEMORY_MODERATE_MB = 512;
+    private const REDIS_HIT_RATE_EXCELLENT = 90;
+    private const REDIS_HIT_RATE_GOOD = 80;
+    private const REDIS_HIT_RATE_MODERATE = 60;
+    private const REDIS_FRAGMENTATION_HIGH = 1.5;
+    private const REDIS_FRAGMENTATION_MODERATE = 1.2;
+    
+    /**
      * Constructor
      *
      * @param StoreManagerInterface $storeManager
@@ -513,10 +533,10 @@ class PerformanceToolkit
                 $sizeDisplay = $sizeMB > 1024 ? round($sizeMB / 1024, 2) . 'GB' : $sizeMB . 'MB';
                 
                 // Determine status based on size
-                if ($sizeMB > 1000) { // > 1GB
+                if ($sizeMB > self::DB_TABLE_SIZE_LARGE_MB) { // > 1GB
                     $status = 'error';
                     $statusText = 'LARGE table - consider optimization';
-                } elseif ($sizeMB > 100) { // > 100MB
+                } elseif ($sizeMB > self::DB_TABLE_SIZE_WARNING_MB) { // > 100MB
                     $status = 'warning';
                     $statusText = 'Growing large, monitor size';
                 } else {
@@ -538,7 +558,7 @@ class PerformanceToolkit
                 $checks[] = ['type' => $status, 'msg' => $message];
                 
                 // Add specific recommendations for known problematic tables
-                if ($sizeMB > 500) {
+                if ($sizeMB > self::DB_TABLE_SIZE_CRITICAL_MB) {
                     if (strpos($tableName, 'log_') === 0) {
                         $checks[] = ['type' => 'info', 'msg' => "→ Log table cleanup: Consider truncating old log entries"];
                     } elseif (strpos($tableName, 'session') !== false) {
@@ -573,10 +593,10 @@ class PerformanceToolkit
                     
                     $totalDbDisplay = $totalDbMB > 1024 ? round($totalDbMB / 1024, 2) . 'GB' : $totalDbMB . 'MB';
                     
-                    if ($totalDbMB > 10240) { // > 10GB
+                    if ($totalDbMB > self::DB_TOTAL_SIZE_VERY_LARGE_GB) { // > 10GB
                         $dbStatus = 'error';
                         $dbStatusText = 'VERY LARGE database - consider optimization';
-                    } elseif ($totalDbMB > 5120) { // > 5GB
+                    } elseif ($totalDbMB > self::DB_TOTAL_SIZE_LARGE_GB) { // > 5GB
                         $dbStatus = 'warning';
                         $dbStatusText = 'Large database - monitor growth';
                     } else {
@@ -650,13 +670,13 @@ class PerformanceToolkit
             $memoryRss = isset($info['used_memory_rss_human']) ? $info['used_memory_rss_human'] : 'Unknown';
             
             // Convert to MB for comparison
-            $memoryMB = round($memoryUsed / 1024 / 1024, 1);
+            $memoryMB = round($memoryUsed / self::BYTES_TO_MB, 1);
             
             // Determine status based on memory usage
-            if ($memoryMB > 1024) { // > 1GB
+            if ($memoryMB > self::REDIS_MEMORY_HIGH_MB) { // > 1GB
                 $status = 'warning';
                 $statusText = 'HIGH memory usage';
-            } elseif ($memoryMB > 512) { // > 512MB
+            } elseif ($memoryMB > self::REDIS_MEMORY_MODERATE_MB) { // > 512MB
                 $status = 'warning';
                 $statusText = 'Moderate memory usage';
             } else {
@@ -690,11 +710,11 @@ class PerformanceToolkit
                 if ($total > 0) {
                     $hitRate = round(($hits / $total) * 100, 2);
                     
-                    if ($hitRate > 90) {
+                    if ($hitRate > self::REDIS_HIT_RATE_EXCELLENT) {
                         $checks[] = ['type' => 'success', 'msg' => "Redis hit rate: {$hitRate}% - EXCELLENT"];
-                    } elseif ($hitRate > 80) {
+                    } elseif ($hitRate > self::REDIS_HIT_RATE_GOOD) {
                         $checks[] = ['type' => 'success', 'msg' => "Redis hit rate: {$hitRate}% - GOOD"];
-                    } elseif ($hitRate > 60) {
+                    } elseif ($hitRate > self::REDIS_HIT_RATE_MODERATE) {
                         $checks[] = ['type' => 'warning', 'msg' => "Redis hit rate: {$hitRate}% - MODERATE"];
                     } else {
                         $checks[] = ['type' => 'error', 'msg' => "Redis hit rate: {$hitRate}% - LOW, check cache strategy"];
@@ -717,9 +737,9 @@ class PerformanceToolkit
             // Memory fragmentation
             if (isset($info['mem_fragmentation_ratio'])) {
                 $fragmentation = (float)$info['mem_fragmentation_ratio'];
-                if ($fragmentation > 1.5) {
+                if ($fragmentation > self::REDIS_FRAGMENTATION_HIGH) {
                     $checks[] = ['type' => 'warning', 'msg' => "Redis memory fragmentation: {$fragmentation} - HIGH, consider restart"];
-                } elseif ($fragmentation > 1.2) {
+                } elseif ($fragmentation > self::REDIS_FRAGMENTATION_MODERATE) {
                     $checks[] = ['type' => 'info', 'msg' => "Redis memory fragmentation: {$fragmentation} - Moderate"];
                 } else {
                     $checks[] = ['type' => 'success', 'msg' => "Redis memory fragmentation: {$fragmentation} - Good"];
