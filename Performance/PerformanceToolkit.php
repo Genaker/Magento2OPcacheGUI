@@ -71,10 +71,13 @@ class PerformanceToolkit
     public function testCPUPerformance(): float
     {
         $start = microtime(true);
+        $result = 0;
         for ($i = 0; $i < self::CPU_TEST_ITERATIONS; $i++) { 
-            $square = $i * $i; 
+            $result += $i * $i; 
         }
         $end = microtime(true);
+        // Use $result to prevent optimization
+        unset($result);
         return $end - $start;
     }
 
