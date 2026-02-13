@@ -171,9 +171,7 @@ class PerformanceToolkit
     {
         $start = microtime(true);
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-            $connection = $resource->getConnection();
+            $connection = $this->resourceConnection->getConnection();
             
             // Simple query test
             for ($i = 0; $i < $iterations; $i++) {
@@ -195,9 +193,7 @@ class PerformanceToolkit
     public function testMySQLLatency()
     {
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $resource = $objectManager->get(\Magento\Framework\App\ResourceConnection::class);
-            $connection = $resource->getConnection();
+            $connection = $this->resourceConnection->getConnection();
             
             // Perform 10 latency tests
             $latencies = [];
@@ -231,11 +227,8 @@ class PerformanceToolkit
     public function testRedisLatency()
     {
         try {
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            
             // Try to get Redis connection from Magento's cache configuration
-            $cacheConfig = $objectManager->get(\Magento\Framework\App\DeploymentConfig::class);
-            $cacheSettings = $cacheConfig->get('cache');
+            $cacheSettings = $this->deploymentConfig->get('cache');
             
             if (isset($cacheSettings['frontend']['default']['backend_options']['server'])) {
                 // Redis is configured, test connection
